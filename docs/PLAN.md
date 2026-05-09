@@ -24,6 +24,7 @@ The POC is throwaway *behavior* on permanent *infrastructure*. The SvelteKit pro
   - Visible "In private testing" badge or note. No signup form, no email capture in the POC — anyone who needs in already has my number.
   - Footer: contact email + a link to `/bryan` as a live example.
 - **`/bryan` route.** Server-rendered. Renders my mixtape from a CSV checked into the repo. Each row = one song + its story. Layout matches the design north star (song is the hero, story sits alongside) but uses placeholder typography — polish lands in v1.
+- **Listen links.** Each song optionally has a `link` URL (a song.link/Odesli URL, resolved by hand and pasted into the CSV). Renders as a small "→ Listen" affordance under the metadata line. Tapping opens the cross-platform redirector so each viewer lands in their own music app. Songs without a link just don't show the affordance — graceful degradation.
 - **OG unfurl on `/bryan`.** A *minimal* unfurl: `og:title`, `og:description`, and a single static `og:image` (one chosen album cover, or a hand-made card committed to `static/`). Not the v1 mosaic generator — that's deferred. The point is that pasting `mixtapestory.com/bryan` into WhatsApp produces *something* better than a bare URL.
 - **404 / unknown handle.** Anything other than `/` and `/bryan` returns a friendly 404 pointing back to `/`. No matcher logic yet — a hardcoded route is fine.
 
@@ -42,22 +43,24 @@ If a feature isn't on the "in scope" list above, it isn't in the POC. When in do
 
 ### CSV seed format
 
-One file at `src/lib/seed/bryan.csv`. Columns:
+One file at `src/lib/seed/bryan.csv`. Six columns, in this order:
 
-| column            | required | example                                                       | notes                                                       |
-| ----------------- | -------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
-| `position`        | yes      | `1`                                                           | Integer; controls render order.                             |
-| `title`           | yes      | `Wichita Lineman`                                             |                                                             |
-| `artist`          | yes      | `Glen Campbell`                                               |                                                             |
-| `album`           | no       | `Wichita Lineman`                                             |                                                             |
-| `release_year`    | no       | `1968`                                                        |                                                             |
-| `album_art_url`   | no       | `https://i.scdn.co/image/...`                                 | Hot-link from Spotify/Apple is fine for POC.                |
-| `songlink_url`    | no       | `https://song.link/s/...`                                     | Pre-resolved by hand (paste into song.link, copy result).   |
-| `story`           | yes      | `Multi-line markdown allowed.`                                | Plain text or light markdown; escape commas + newlines per CSV rules. |
+| column   | required | example                          | notes                                                                |
+| -------- | -------- | -------------------------------- | -------------------------------------------------------------------- |
+| `year`   | no       | `1968`                           | Release year. Used for the year-range header on the page.            |
+| `song`   | yes      | `Wichita Lineman`                |                                                                      |
+| `album`  | no       | `Wichita Lineman`                | Blank cells (`, ,`) are allowed.                                     |
+| `artist` | no       | `Glen Campbell`                  | Blank cells (`, ,`) are allowed.                                     |
+| `link`   | no       | `https://song.link/s/abc123`     | Cross-platform listen URL. Resolve manually at song.link/Odesli for the POC; v1 hits the API. Renders as a small "→ Listen" affordance. |
+| `story`  | yes      | `He stands on the line ...`      | Plain text. Commas and apostrophes are fine; see parser note below.  |
 
-Parse with [`papaparse`](https://www.papaparse.com/) (no native Node CSV in the Cloudflare runtime, and `papaparse` works in Workers). Read at request time from `src/lib/seed/bryan.csv` imported as a string via Vite's `?raw` suffix. No build-time codegen needed.
+Header line is a comment: `# year, song, album, artist, link, story`. Lines starting with `#` and blank lines are ignored. Position is implicit (file order = render order); no `position` column.
 
-If the story field gets unwieldy in CSV (likely — long-form writing in a single cell is awkward), promote to one markdown file per song under `src/lib/seed/bryan/{position}-{slug}.md` and keep the CSV for metadata only. Decide once we see real content.
+**Parser** (`src/lib/seed/parse.ts`): a tiny custom split, not `papaparse`. Splits each row on the first 5 commas only — everything after the 5th comma is the `story` field, so unquoted commas inside stories are fine. The cost of this simplicity: a comma inside `song`, `album`, `artist`, or `link` will mis-parse (so a band like "Crosby, Stills & Nash" needs to be written as "Crosby Stills Nash" or the parser upgraded). Acceptable for POC; revisit if real data needs it.
+
+Read at request time via Vite's `?raw` import — no build-time codegen.
+
+If the story field gets unwieldy in CSV (likely — long-form writing in a single cell is awkward), promote to one markdown file per song under `src/lib/seed/bryan/{NN}-{slug}.md` and keep the CSV for metadata only. Decide once we see real content.
 
 ### POC file additions
 
@@ -68,7 +71,7 @@ src/
 ├── lib/
 │   ├── seed/
 │   │   ├── bryan.csv               ← songs + stories
-│   │   └── parse.ts                ← papaparse wrapper, returns Song[] + Story[]
+│   │   └── parse.ts                ← splits on first 4 commas; returns SeedSong[]
 │   └── components/
 │       └── poc/
 │           ├── LandingHero.svelte  ← tagline + "in private testing" badge
@@ -140,7 +143,7 @@ Once these are checked, POC is "done" and v1 scaffold work (step 1 below) begins
 mixtape/
 ├── .env.example                    ← committed; documents required vars
 ├── .gitignore
-├── .nvmrc                          ← pin Node 20
+├── .nvmrc                          ← pin Node 22
 ├── .npmrc                          ← engine-strict, public-hoist-pattern for shadcn
 ├── .prettierrc
 ├── eslint.config.js
@@ -248,7 +251,7 @@ The order matters: each step should leave the repo in a runnable state.
 
 - `pnpm create svelte@latest .` — Skeleton template, TypeScript syntax, ESLint, Prettier. **Decline** Playwright and Vitest at this prompt (we'll add Vitest selectively).
 - Edit `tsconfig.json`: confirm `"strict": true`; add `"noUncheckedIndexedAccess": true` and `"exactOptionalPropertyTypes": true`. CLAUDE.md says no `any` — these flags catch the common escape hatches.
-- Add `.nvmrc` pinning Node 20 (Cloudflare Pages runtime supports up to 20 reliably).
+- Add `.nvmrc` pinning Node 22 (current LTS; Cloudflare Pages supports it. Avoid `node@20` — deprecated upstream and disabled in Homebrew on 2026-10-28).
 - Add a thin `README.md` that points to `CLAUDE.md` and `PLAN.md`.
 
 ### 2. Tailwind + shadcn-svelte

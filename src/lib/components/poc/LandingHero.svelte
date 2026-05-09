@@ -1,0 +1,27 @@
+<script lang="ts">
+  // POC landing — replaced when v1 lands.
+</script>
+
+<section class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-5 py-12 sm:px-6 sm:py-16">
+  <div class="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-rule px-3 py-1 text-xs uppercase tracking-wider text-ink-muted">
+    <span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+    <span>In private testing</span>
+  </div>
+
+  <h1 class="text-4xl leading-tight text-ink sm:text-5xl">
+    mixtapestory<span class="text-accent">.</span>com
+  </h1>
+
+  <p class="mt-4 text-xl leading-snug text-ink sm:text-2xl">
+    Share the songs, share the stories.
+  </p>
+
+  <p class="mt-6 max-w-prose text-base leading-relaxed text-ink-muted">
+    A small place for mixtape stories — a curated set of songs, each with writing about why
+    that song matters. The mixtape is the artifact; the stories are what make it personal.
+  </p>
+
+  <p class="mt-8 text-sm text-ink-muted">
+    A first example: <a href="/bryan" class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent">/bryan</a>
+  </p>
+</section>
