@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mixtapestory.com — WhatsApp unfurl mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f5f0e6;
+      --paper-soft: #efe9dc;
+      --ink: #1a1714;
+      --ink-soft: #4d453d;
+      --ink-muted: #8c8175;
+      --accent: #a8553b;
+      --rule: #dcd4c2;
+      --rule-soft: #e8e0cd;
+
+      --wa-header: #075e54;
+      --wa-bg: #e5ddd5;
+      --wa-bubble-out: #dcf8c6;
+      --wa-bubble-in: #ffffff;
+      --wa-link-bg: #f7f5ee;
+
+      --display: 'Fraunces', Georgia, 'Times New Roman', serif;
+      --body: 'Geist', system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 56px 24px 80px;
+      background-image:
+        radial-gradient(circle at 12% 8%, rgba(168, 85, 59, 0.06), transparent 40%),
+        radial-gradient(circle at 88% 92%, rgba(26, 23, 20, 0.04), transparent 40%);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header.page-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      margin-bottom: 48px;
+      max-width: 720px;
+    }
+
+    .eyebrow {
+      font-family: var(--body);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1.page-title {
+      font-family: var(--display);
+      font-weight: 500;
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      font-variation-settings: "opsz" 144;
+    }
+
+    h1.page-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .lede {
+      font-size: 16px;
+      color: var(--ink-soft);
+      max-width: 56ch;
+    }
+
+    /* Phone gallery */
+    .phones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 48px;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    .phone-figure {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .step-label {
+      font-family: var(--display);
+      font-size: 14px;
+      font-weight: 500;
+      font-style: italic;
+      color: var(--ink-soft);
+    }
+
+    .step-label .num {
+      font-style: normal;
+      font-feature-settings: "tnum";
+      color: var(--accent);
+      margin-right: 6px;
+    }
+
+    .phone {
+      width: 340px;
+      height: 700px;
+      background: #0d0d0d;
+      border-radius: 44px;
+      padding: 12px;
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.05) inset,
+        0 30px 60px -20px rgba(26, 23, 20, 0.35),
+        0 8px 20px -8px rgba(26, 23, 20, 0.2);
+      position: relative;
+    }
+
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110px;
+      height: 24px;
+      background: #000;
+      border-radius: 14px;
+      z-index: 2;
+    }
+
+    .screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 32px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ============ WhatsApp screen ============ */
+
+    .wa-screen { background: var(--wa-bg); font-size: 13px; }
+
+    .wa-statusbar {
+      height: 44px;
+      background: var(--wa-header);
+      flex-shrink: 0;
+    }
+
+    .wa-header {
+      background: var(--wa-header);
+      color: white;
+      padding: 6px 14px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .wa-back { font-size: 22px; opacity: 0.95; line-height: 1; }
+
+    .wa-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #b89968, #8b6f47);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-size: 14px; font-weight: 500;
+      color: white;
+    }
+
+    .wa-name { font-weight: 500; font-size: 15px; line-height: 1.1; }
+    .wa-status { font-size: 11px; opacity: 0.8; }
+
+    .wa-body {
+      flex: 1;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background-color: var(--wa-bg);
+      background-image:
+        radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
+      background-size: 22px 22px, 22px 22px;
+      background-position: 0 0, 11px 11px;
+      overflow: hidden;
+    }
+
+    .wa-day-tag {
+      align-self: center;
+      background: rgba(225, 245, 254, 0.92);
+      color: #4a5556;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin: 4px 0 8px;
+    }
+
+    .wa-bubble {
+      max-width: 82%;
+      padding: 6px 8px 4px;
+      border-radius: 8px;
+      box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+      position: relative;
+    }
+
+    .wa-bubble.in { background: var(--wa-bubble-in); align-self: flex-start; border-top-left-radius: 0; }
+    .wa-bubble.out { background: var(--wa-bubble-out); align-self: flex-end; border-top-right-radius: 0; }
+
+    .wa-bubble-text { font-size: 13.5px; color: #111; line-height: 1.35; padding: 2px 4px; }
+
+    .wa-bubble-time {
+      font-size: 10px;
+      color: #6b7376;
+      text-align: right;
+      margin-top: 2px;
+      padding-right: 2px;
+    }
+
+    /* The unfurl card */
+    .unfurl {
+      background: var(--wa-link-bg);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 4px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .unfurl-image {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: 1fr 1fr;
+      height: 130px;
+      gap: 1px;
+      background: #cfc6b0;
+    }
+
+    .album {
+      background: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--display);
+      font-size: 9px;
+      font-weight: 600;
+      text-align: center;
+      color: white;
+      letter-spacing: 0.02em;
+      padding: 4px;
+      line-height: 1.1;
+    }
+
+    .album.a1 { background: linear-gradient(135deg, #5a4a2c, #2d1f0e); }
+    .album.a2 { background: linear-gradient(135deg, #8b1a1a, #3d0808); }
+    .album.a3 { background: linear-gradient(135deg, #1f4858, #0a2530); }
+    .album.a4 { background: linear-gradient(135deg, #2a2a2a, #050505); }
+    .album.a5 { background: linear-gradient(135deg, #c4a661, #6b5028); }
+    .album.a6 { background: linear-gradient(135deg, #3d6a3d, #1a3018); }
+    .album.a7 { background: linear-gradient(135deg, #6b3a8a, #2e1438); }
+    .album.a8 {
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .unfurl-meta { padding: 8px 10px 10px; }
+    .unfurl-title {
+      font-family: var(--display);
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a1714;
+      letter-spacing: -0.01em;
+    }
+    .unfurl-desc {
+      font-size: 12px;
+      color: #5a5a5a;
+      margin-top: 2px;
+    }
+    .unfurl-domain {
+      font-size: 10.5px;
+      color: #8a8a8a;
+      margin-top: 6px;
+      letter-spacing: 0.02em;
+      text-transform: lowercase;
+    }
+
+    .wa-link {
+      color: #039be5;
+      font-size: 13px;
+      padding: 0 4px 2px;
+      word-break: break-all;
+    }
+
+    /* ============ Browser / mixtape screen ============ */
+
+    .browser-screen { background: var(--paper); font-family: var(--body); font-size: 13px; }
+
+    .browser-statusbar {
+      height: 44px;
+      background: var(--paper-soft);
+      flex-shrink: 0;
+    }
+
+    .browser-bar {
+      padding: 8px 14px;
+      background: var(--paper-soft);
+      border-bottom: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .browser-url {
+      flex: 1;
+      background: white;
+      border-radius: 14px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--rule);
+    }
+    .lock { font-size: 9px; opacity: 0.5; }
+    .url-domain { color: var(--ink); }
+    .url-path { color: var(--ink-soft); }
+
+    .browser-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .mixtape-hero {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .mixtape-eyebrow {
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .mixtape-title {
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      font-variation-settings: "opsz" 144;
+    }
+
+    .mixtape-title em { font-style: italic; }
+
+    .mixtape-meta {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 8px;
+    }
+
+    .mixtape-streams {
+      display: flex;
+      gap: 6px;
+      margin-top: 14px;
+    }
+
+    .stream-pill {
+      font-size: 10.5px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
+    }
+    .stream-pill.spotify { background: #1ed760; color: #0a3d1f; }
+    .stream-pill.apple { background: #fb5c74; color: #4a0e1a; }
+    .stream-pill.yt { background: #ff0000; color: #fff; }
+
+    /* Song list */
+    .songs { padding: 8px 20px 20px; }
+
+    .song {
+      padding: 16px 0;
+      border-top: 1px solid var(--rule-soft);
+    }
+    .song:first-child { border-top: none; }
+
+    .song-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .song-title {
+      font-family: var(--display);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .song-year {
+      font-family: var(--body);
+      font-feature-settings: "tnum";
+      font-size: 10.5px;
+      color: var(--ink-muted);
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+
+    .song-artist {
+      font-size: 12px;
+      color: var(--ink-soft);
+      margin-top: 2px;
+    }
+
+    .song-story {
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      margin-top: 10px;
+      padding-left: 12px;
+      border-left: 2px solid var(--accent);
+    }
+
+    .song-ask {
+      margin-top: 10px;
+      font-size: 11.5px;
+      font-family: var(--body);
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+    }
+
+    /* Annotations */
+    .legend {
+      max-width: 720px;
+      margin: 64px auto 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      padding-top: 28px;
+      border-top: 1px solid var(--rule);
+    }
+
+    .legend h3 {
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .legend p {
+      font-size: 13.5px;
+      color: var(--ink-soft);
+      line-height: 1.55;
+    }
+
+    footer.page-foot {
+      max-width: 720px;
+      margin: 48px auto 0;
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-family: var(--display);
+      font-style: italic;
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 32px 16px 48px; }
+      .legend { grid-template-columns: 1fr; gap: 24px; }
+      .phones { gap: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="page-head">
+      <div class="eyebrow">Mockup · WhatsApp unfurl</div>
+      <h1 class="page-title">How a mixtape <em>lands</em> in a chat.</h1>
+      <p class="lede">A pasted mixtapestory.com URL unfurls into a preview card in WhatsApp. Tapping it opens the mixtape in the recipient's browser. The unfurl card is the funnel — most viewers decide whether to tap based on this one image and these three lines.</p>
+    </header>
+
+    <main class="phones">
+
+      <!-- ============ Phone 1: WhatsApp ============ -->
+      <figure class="phone-figure">
+        <figcaption class="step-label"><span class="num">01</span>URL pasted in WhatsApp</figcaption>
+
+        <div class="phone">
+          <div class="screen wa-screen">
+
+            <div class="wa-statusbar"></div>
+
+            <div class="wa-header">
+              <div class="wa-back">‹</div>
+              <div class="wa-avatar">W</div>
+              <div>
+                <div class="wa-name">Writing group</div>
+                <div class="wa-status">12 members</div>
+              </div>
+            </div>
+
+            <div class="wa-body">
+              <div class="wa-day-tag">TODAY</div>
+
+              <div class="wa-bubble in">
+                <div class="wa-bubble-text">finally finished mine — would love your thoughts</div>
+                <div class="wa-bubble-time">10:41 AM</div>
+              </div>
+
+              <div class="wa-bubble in" style="margin-top: 4px;">
+                <div class="unfurl">
+                  <div class="unfurl-image" aria-hidden="true">
+                    <div class="album a1">NOT FRAGILE</div>
+                    <div class="album a2">HAVIN' A PARTY</div>
+                    <div class="album a3">HIDEAWAY</div>
+                    <div class="album a4">WILL OF THE PEOPLE</div>
+                    <div class="album a5">RADIO GA GA</div>
+                    <div class="album a6">MOVIN ON</div>
+                    <div class="album a7">THE TOAST</div>
+                    <div class="album a8">+1</div>
+                  </div>
+                  <div class="unfurl-meta">
+                    <div class="unfurl-title">Sam's mixtape</div>
+                    <div class="unfurl-desc">7 songs · 1974 — 2022</div>
+                    <div class="unfurl-domain">mixtapestory.com</div>
+                  </div>
+                </div>
+                <div class="wa-link">mixtapestory.com/sam</div>
+                <div class="wa-bubble-time">10:41 AM</div>
+              </div>
+
+              <div class="wa-bubble out" style="margin-top: 8px;">
+                <div class="wa-bubble-text">opening it now ✨</div>
+                <div class="wa-bubble-time">10:43 AM ✓✓</div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </figure>
+
+      <!-- ============ Phone 2: Browser ============ -->
+      <figure class="phone-figure">
+        <figcaption class="step-label"><span class="num">02</span>Tapped — opens in browser</figcaption>
+
+        <div class="phone">
+          <div class="screen browser-screen">
+
+            <div class="browser-statusbar"></div>
+
+            <div class="browser-bar">
+              <div class="browser-url">
+                <span class="lock">🔒</span>
+                <span class="url-domain">mixtapestory.com</span><span class="url-path">/sam</span>
+              </div>
+            </div>
+
+            <div class="browser-body">
+
+              <div class="mixtape-hero">
+                <div class="mixtape-eyebrow">A mixtape by</div>
+                <div class="mixtape-title">Sam's <em>mixtape</em></div>
+                <div class="mixtape-meta">7 songs · 1974 — 2022 · listen on</div>
+                <div class="mixtape-streams">
+                  <span class="stream-pill spotify">Spotify</span>
+                  <span class="stream-pill apple">Apple</span>
+                  <span class="stream-pill yt">YouTube</span>
+                </div>
+              </div>
+
+              <div class="songs">
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">Not Fragile</div>
+                    <div class="song-year">1974</div>
+                  </div>
+                  <div class="song-artist">Bachman-Turner Overdrive</div>
+                  <div class="song-story">"Driving the back roads of Manitoba in my brother's pickup, windows down, sixteen and certain we'd live forever."</div>
+                </div>
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">Havin' a Party</div>
+                    <div class="song-year">1976</div>
+                  </div>
+                  <div class="song-artist">Southside Johnny &amp; The Asbury Jukes</div>
+                  <div class="song-story">"My father played this at every family cookout. I didn't realize until he was gone that he'd taught me what joy sounds like."</div>
+                </div>
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">Hideaway</div>
+                    <div class="song-year">1980</div>
+                  </div>
+                  <div class="song-artist">David Sanborn</div>
+                  <button class="song-ask">Ask about this song</button>
+                </div>
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">Radio Ga Ga</div>
+                    <div class="song-year">1984</div>
+                  </div>
+                  <div class="song-artist">Queen</div>
+                  <div class="song-story">"The first concert I ever bought tickets for with my own money. I still know every clap."</div>
+                </div>
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">The Toast</div>
+                    <div class="song-year">2019</div>
+                  </div>
+                  <div class="song-artist">Adam Ezra Group</div>
+                  <button class="song-ask">Ask about this song</button>
+                </div>
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">Movin on My Mind</div>
+                    <div class="song-year">2020</div>
+                  </div>
+                  <div class="song-artist">South Hill Banks</div>
+                  <button class="song-ask">Ask about this song</button>
+                </div>
+
+                <div class="song">
+                  <div class="song-row">
+                    <div class="song-title">Will Of The People</div>
+                    <div class="song-year">2022</div>
+                  </div>
+                  <div class="song-artist">Muse</div>
+                  <div class="song-story">"My daughter put this on during the first long drive after she got her license. I cried, quietly, in the passenger seat."</div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </figure>
+
+    </main>
+
+    <section class="legend">
+      <div>
+        <h3>The unfurl card</h3>
+        <p>Generated server-side as a 1200×630 PNG. Mosaic of album-art covers, title typeset in Fraunces, faint gradient overlay. Cached by mixtape version hash so a song add invalidates the previous image. This image is the funnel — most viewers decide whether to tap based on it.</p>
+      </div>
+      <div>
+        <h3>The mixtape page</h3>
+        <p>Editorial, not product-y. Story snippets are the hero — the song titles sit alongside, not above. Streaming pills route through Songlink so each viewer opens the song in their own preferred service. The "Ask about this song" button opens a wa.me deep-link to the mixtape creator.</p>
+      </div>
+    </section>
+
+    <footer class="page-foot">
+      Reference mockup. Visual direction only — actual implementation will use shadcn-svelte primitives.
+    </footer>
+
+  </div>
+</body>
+</html>
