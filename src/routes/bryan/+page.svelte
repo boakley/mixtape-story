@@ -32,9 +32,12 @@
     return min === max ? `${min}` : `${min} — ${max}`;
   });
 
-  const ogDescription = $derived(
-    `${data.songs.length} songs${yearRange ? ` · ${yearRange}` : ''} — a mixtape with stories.`
-  );
+  const ogDescription = $derived.by(() => {
+    const titles = data.songs.map((s) => s.title);
+    const shown = titles.slice(0, 4).join(' · ');
+    const rest = titles.length - 4;
+    return rest > 0 ? `${shown} · +${rest} more` : shown;
+  });
 </script>
 
 <svelte:head>
@@ -44,6 +47,9 @@
   <meta property="og:description" content={ogDescription} />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://mixtapestory.com/{data.handle}" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="{data.displayName}'s mixtape" />
+  <meta name="twitter:description" content={ogDescription} />
 </svelte:head>
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">

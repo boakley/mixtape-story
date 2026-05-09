@@ -11,6 +11,10 @@
   <meta property="og:title" content="mixtapestory.com" />
   <meta property="og:description" content="Share the songs, share the stories." />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mixtapestory.com/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="mixtapestory.com" />
+  <meta name="twitter:description" content="Share the songs, share the stories." />
 </svelte:head>
 
 <LandingHero />

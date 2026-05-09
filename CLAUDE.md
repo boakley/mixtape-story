@@ -108,7 +108,7 @@ See `docs/design-notes.md` for the longer reasoning and `docs/mockups/whatsapp-u
 WhatsApp is a **distribution channel, not a platform.** The app lives on the open web. Two mechanisms:
 
 1. **`wa.me` Click-to-Chat links** — every mixtape page has a "Share to WhatsApp" button that opens WhatsApp with the URL pre-filled.
-2. **Open Graph link unfurling** — when someone pastes a mixtapestory.com URL into any chat, it unfurls into a preview card. Every public mixtape page **must** serve correct OG tags: `og:title`, `og:description`, `og:image` (album-art mosaic, generated server-side). This is the single feature that has to feel right; budget time accordingly.
+2. **Open Graph link unfurling** — when someone pastes a mixtapestory.com URL into any chat, it unfurls into a preview card. The v1 target is `og:title`, `og:description`, and a per-mixtape `og:image` (album-art mosaic, generated server-side) — most viewers decide whether to tap based on the unfurl, so this surface needs to land. The POC currently ships text-only (no `og:image`, with the song list in `og:description`) so we can learn from the writing group whether the rich mosaic is actually load-bearing before building it.
 
 ## Foundation for future audiences
 

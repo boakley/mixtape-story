@@ -45,9 +45,11 @@ The unfurl card is the single most important pixel real estate in the product �
 - `og:image` — 1200×630 PNG generated server-side. A 2×2 or 3×3 mosaic of album art covers, with the title typeset over a slight gradient. Generated at request time; cached aggressively (album art doesn't change once a song is added).
 - `og:url`, `og:type=website`, `twitter:card=summary_large_image`
 
-The image is *not* optional and *not* a generic logo. The whole appeal is recognizing "oh, that's Sam's specific mixtape" at a glance.
+For v1 the image is the heart of the unfurl — the "oh, that's Sam's specific mixtape" recognition at a glance is what we're after. A generic logo would not do.
 
-Implementation: `workers-og` (Cloudflare-compatible port of `@vercel/og`). Cache by mixtape version hash so a song add invalidates the previous image. See `docs/mockups/whatsapp-unfurl.html` for the visual target.
+Implementation (when we build it): `workers-og` (Cloudflare-compatible port of `@vercel/og`). Cache by mixtape version hash so a song add invalidates the previous image. See `docs/mockups/whatsapp-unfurl.html` for the visual target.
+
+**POC state.** The POC currently ships *without* `og:image`, which renders WhatsApp's small no-image card instead of the rich card. `og:description` is also different from the v1 spec above — it lists the first 3–4 song titles joined by `·` (e.g. "Not Fragile · Havin' a Party · Hideaway · +5 more") so the compact card reads like a list rather than a generic blurb. This is a deliberate test: if writing-group viewers find the text-only card sufficient ("I can see what's in there, I'll tap"), the mosaic isn't actually load-bearing and we can simplify v1. If they don't tap, the mosaic moves up the priority list.
 
 ## Voice memo modes (post-v1)
 
