@@ -11,18 +11,23 @@ A web app for making and sharing **mixtape stories** — a curated collection of
 
 ## Stack
 
-SvelteKit 2 (Svelte 5, TypeScript strict) · Tailwind v4 · `@sveltejs/adapter-cloudflare` · Cloudflare Pages.
+SvelteKit 2 (Svelte 5, TypeScript strict) · Tailwind v4 · `@sveltejs/adapter-cloudflare` · Cloudflare Pages (hosting) · Supabase (Postgres + Auth) · Resend (transactional email).
 
 ## Local development
 
-Prerequisites: Node 22 (pinned in `.nvmrc`), pnpm.
+Prerequisites: Node 22 (pinned in `.nvmrc`), pnpm, and Docker Desktop (for the local Supabase stack).
 
 ```sh
 pnpm install
-pnpm dev          # http://localhost:5173
-pnpm check        # type-check + Svelte check
-pnpm build        # production build → .svelte-kit/cloudflare/
+pnpm exec supabase start    # local Postgres + Auth, ~5 min first time
+pnpm dev                    # http://localhost:5173
+pnpm check                  # type-check + Svelte check
+pnpm build                  # production build → .svelte-kit/cloudflare/
 ```
+
+Env: `.env.local` (gitignored) holds dev-only values (`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_SITE_URL`). See `.env.example` for the keys. Get the local stack's anon key with `pnpm exec supabase status -o env`.
+
+Auth flow locally: sign-in emails are caught by **Mailpit** at http://127.0.0.1:54324 (not your real inbox). Open it to find the magic link.
 
 ## Seed data
 
@@ -60,12 +65,33 @@ Wrangler reads settings from [`wrangler.toml`](wrangler.toml) — notably `compa
 
 `--commit-dirty=true` lets us deploy without first committing every change. Useful while iterating; remember to commit anything worth keeping.
 
+### Production env vars
+
+`pnpm build` reads `.env.production.local` (gitignored) and bakes the `PUBLIC_*` values into the bundle. To deploy against the production Supabase project, that file must contain `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, and `PUBLIC_SITE_URL=https://mixtapestory.com`. Anon key is recoverable any time via `pnpm exec supabase projects api-keys --project-ref kudxongbgeaylfpcmick`.
+
 ### One-time setup (already configured; here for the record)
+
+**Hosting & DNS**
 
 - Cloudflare account.
 - A Cloudflare API token with **Cloudflare Pages: Edit** permission, exported as `CLOUDFLARE_API_TOKEN` in `~/.zshenv` (so non-interactive shells — including this `wrangler` invocation — pick it up). Create tokens at https://dash.cloudflare.com/profile/api-tokens.
 - Cloudflare Pages project named `mixtapestory`, production branch `main`. Created once with `pnpm exec wrangler pages project create mixtapestory --production-branch=main`.
 - Custom domains (`mixtapestory.com`, `www.mixtapestory.com`) attached in **Workers & Pages → mixtapestory → Custom domains**. DNS lives on Cloudflare; registrar is Porkbun.
+
+**Supabase (auth + database)**
+
+- Production project `mixtapestory`, ref `kudxongbgeaylfpcmick`, region East US.
+- CLI linked locally via `pnpm exec supabase link --project-ref kudxongbgeaylfpcmick`. Push schema changes with `pnpm exec supabase db push`.
+- Migrations live in [`supabase/migrations/`](supabase/migrations/) — source of truth for the schema. Local stack applies them via `supabase db reset`.
+- Auth → URL Configuration in the dashboard: **Site URL** is `https://mixtapestory.com`, **Redirect URLs** includes `https://mixtapestory.com/auth/callback`. Mismatching either of these will reject the magic-link redirect after the user clicks the email.
+
+**Email (Resend)**
+
+- Supabase's default mail service is replaced with custom SMTP via **Resend**. Configured at **Project Settings → Auth → SMTP Settings** in the Supabase dashboard.
+- SMTP host `smtp.resend.com`, port `465`, username `resend`, password = Resend API key.
+- Sender: `noreply@mixtapestory.com` (display name set in the same screen).
+- The `mixtapestory.com` domain is verified with Resend (SPF/DKIM records in Cloudflare DNS). When merging SPF entries, remember to combine into one `v=spf1 …` record — multiple SPF records cause silent verification failures.
+- Email templates ([`email-templates/`](email-templates/)) are the source of truth — paste them into **Authentication → Email Templates** in the Supabase dashboard. Templates aren't pushed by `supabase db push`; if we change them, re-paste manually.
 
 ### Troubleshooting
 
@@ -75,4 +101,4 @@ Wrangler reads settings from [`wrangler.toml`](wrangler.toml) — notably `compa
 
 ## What this isn't (yet)
 
-No auth, no database, no Songlink API integration, no editor UI. The POC is read-only and CSV-driven by design. See [`docs/PLAN.md`](docs/PLAN.md) for what comes next.
+Magic-link auth lives (Phase 1a). What's still missing: the editor UI (Phase 1b — `/{handle}/edit` form, songs/stories/media schema, Songlink API integration), the read-path DB migration (Phase 1c — `/{handle}` still reads from CSV), and Phase 1d polish (OG mosaic generator, Ask flow, PWA). See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence.
