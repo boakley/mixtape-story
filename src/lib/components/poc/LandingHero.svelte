@@ -1,5 +1,7 @@
 <script lang="ts">
   // POC landing — replaced when v1 lands.
+  type Props = { handles: string[] };
+  let { handles }: Props = $props();
 </script>
 
 <section class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-5 py-12 sm:px-6 sm:py-16">
@@ -21,7 +23,16 @@
     that song matters. The mixtape is the artifact; the stories are what make it personal.
   </p>
 
-  <p class="mt-8 text-sm text-ink-muted">
-    A first example: <a href="/bryan" class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent">/bryan</a>
-  </p>
+  {#if handles.length > 0}
+    <p class="mt-8 text-sm text-ink-muted">
+      {handles.length === 1 ? 'A first example' : 'Examples'}:
+      {#each handles as handle, i}
+        <a
+          href="/{handle}"
+          class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+          >/{handle}</a
+        >{#if i < handles.length - 1}<span class="text-ink-muted"> · </span>{/if}
+      {/each}
+    </p>
+  {/if}
 </section>

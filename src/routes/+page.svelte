@@ -1,5 +1,9 @@
 <script lang="ts">
   import LandingHero from '$lib/components/poc/LandingHero.svelte';
+  import type { PageData } from './$types';
+
+  type Props = { data: PageData };
+  let { data }: Props = $props();
 </script>
 
 <svelte:head>
@@ -17,4 +21,4 @@
   <meta name="twitter:description" content="Share the songs, share the stories." />
 </svelte:head>
 
-<LandingHero />
+<LandingHero handles={data.handles} />
