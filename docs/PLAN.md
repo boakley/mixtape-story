@@ -646,16 +646,33 @@ UI polish (typography, spacing, real empty states, the actual mosaic layout matc
 
 0d. Configure DNS + first Cloudflare Pages deploy to `mixtapestory.com`. Walk the WhatsApp paste test on a real phone. Run through the POC "definition of done" checklist.
 
-**Phase 1 (v1 scaffold) — only after POC is live and the WhatsApp unfurl looks right.**
+**Phase 1 (v1 scaffold) — only after POC is live.**
+
+Phase 1 is split into sub-phases so auth lands on a settled foundation before any feature depends on it. Building features first and bolting auth on later means a painful retrofit (every endpoint touches sessions, every table gains an RLS pass, migration of anonymous data to authenticated owners). Doing auth first lets every subsequent feature assume `event.locals.getSession()` from day one.
+
+**Phase 1a — Auth + identity (no feature surface yet).** Deliverable: you can sign in via magic link, claim a handle, and stay signed in across reloads. Read pages still serve from CSV; there is no editor yet.
 
 1. Step 4 (Supabase clients + hooks). Commit.
-2. Step 5 (migrations + RLS). Commit. Run `supabase db reset` and verify with a hand-written `psql` smoke check.
+2. Step 5 — but only the `profiles` table + its RLS policy for now. Songs/stories/media tables wait until 1b. Commit. Run `supabase db reset` and verify with a hand-written `psql` smoke check.
 3. Steps 6 → 7 (auth + onboarding). Commit. Manually walk the magic-link flow against the local stack.
-4. Step 8 (skeleton routes that compile but don't yet do their final job). Commit.
-5. Step 9 (Songlink). Commit. Verify by pasting one Spotify URL through `/api/songlink`.
-6. Step 10 (OG image). Commit. Eyeball one rendered PNG locally.
-7. Step 11 (share + ask). Commit.
-8. Step 12 (PWA manifest + icons). Commit.
-9. Step 13 (deploy). First production deploy. Smoke-check the unfurl with a real WhatsApp paste.
+4. Production: create remote Supabase project, push migrations, configure auth email templates and Site URL / Redirect URLs, add env vars in Cloudflare Pages, deploy. Verify the magic-link round-trip works against `mixtapestory.com`.
 
-After step 13, the scaffold work is done and feature-by-feature polish begins.
+**Phase 1b — Editor.** Builds on auth from 1a. Deliverable: a signed-in owner can add/edit/remove songs and stories on `/{handle}/edit`.
+
+5. Add the rest of the schema from Step 5 (`songs`, `stories`, `story_media`, `songlink_cache`, `ask_clicks`) plus RLS. Migrate existing seed CSVs into the DB (one-shot script). Commit.
+6. Step 8 (skeleton routes — including `/{handle}/edit` shell). Commit.
+7. Step 9 (Songlink integration in the editor). Commit. Verify by pasting one Spotify URL through `/api/songlink`.
+
+**Phase 1c — Read-path migration.** The public `/{handle}` page reads from DB instead of the seed CSVs. The CSV seed files become a deletable migration artifact.
+
+8. Rewire `/[handle]/+page.server.ts` to query the DB. Commit.
+9. Delete `src/lib/seed/` and the dynamic-glob in `+page.ts`. Commit.
+
+**Phase 1d — Polish.** OG mosaic, Ask flow, PWA, final deploy.
+
+10. Step 10 (OG image generator). Commit. Eyeball one rendered PNG locally.
+11. Step 11 (share + ask). Commit.
+12. Step 12 (PWA manifest + icons). Commit.
+13. Step 13 covered incrementally above; treat as a final polish sweep.
+
+After 1d, the scaffold work is done and feature-by-feature polish begins.
