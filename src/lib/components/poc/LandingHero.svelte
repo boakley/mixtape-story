@@ -1,7 +1,27 @@
 <script lang="ts">
-  // POC landing — replaced when v1 lands.
+  import { quotes } from '$lib/quotes';
+
   type Props = { handles: string[] };
   let { handles }: Props = $props();
+
+  const ROTATE_MS = 5 * 60 * 1000; // 5 minutes; tunable
+
+  let index = $state(0);
+  const current = $derived(quotes[index]);
+
+  $effect(() => {
+    // SSR/prerender freezes index=0; pick a fresh random on mount.
+    index = Math.floor(Math.random() * quotes.length);
+
+    if (quotes.length <= 1) return;
+    const interval = setInterval(() => {
+      let next = Math.floor(Math.random() * quotes.length);
+      if (next === index) next = (next + 1) % quotes.length;
+      index = next;
+    }, ROTATE_MS);
+
+    return () => clearInterval(interval);
+  });
 </script>
 
 <section class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-5 py-12 sm:px-6 sm:py-16">
@@ -34,5 +54,14 @@
         >{#if i < handles.length - 1}<span class="text-ink-muted"> · </span>{/if}
       {/each}
     </p>
+  {/if}
+
+  {#if current}
+    <figure class="mt-12 max-w-prose border-t border-rule pt-8">
+      <blockquote class="text-base italic leading-relaxed text-ink">
+        “{current.quote}”
+      </blockquote>
+      <figcaption class="mt-2 text-sm text-ink-muted">— {current.author}</figcaption>
+    </figure>
   {/if}
 </section>
