@@ -1,0 +1,49 @@
+<!--
+  Magic Link email template — sent when an existing user signs in.
+  Paste the body of this file into Supabase dashboard:
+    Authentication → Email Templates → Magic Link → Message body
+  Subject suggestion: "Your sign-in link for mixtapestory.com"
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fdfcf8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
+  <tr>
+    <td align="center" style="padding: 48px 16px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 540px;">
+        <tr>
+          <td style="padding-bottom: 20px;">
+            <img src="https://mixtapestory.com/email-icon.png" alt="" width="48" height="48" style="display: block; border: 0;" />
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 8px;">
+            <a href="https://mixtapestory.com" style="text-decoration: none; color: #1a1816; font-size: 24px; font-weight: 500; letter-spacing: -0.5px;">mixtapestory<span style="color: #b04a2f;">.</span>com</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 32px;">
+            <span style="display: inline-block; width: 28px; height: 2px; background-color: #b04a2f; line-height: 2px; font-size: 1px;">&nbsp;</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 24px; font-size: 16px; line-height: 1.6; color: #1a1816;">
+            Click below to sign in:
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 32px;">
+            <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 13px 32px; background-color: #1a1816; color: #fdfcf8; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: 500;">Sign in</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 32px; font-size: 14px; line-height: 1.6; color: #6b6660;">
+            This link works once and expires shortly. If you didn't request it, you can ignore this email.
+          </td>
+        </tr>
+        <tr>
+          <td style="border-top: 1px solid #e8e3da; padding-top: 20px; font-size: 13px; color: #6b6660;">
+            Share the songs, share the stories.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

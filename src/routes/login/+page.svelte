@@ -23,8 +23,9 @@
     <div class="mt-8 rounded-md border border-rule p-4 text-sm text-ink">
       <p>Check your email for a sign-in link.</p>
       <p class="mt-2 text-ink-muted">
-        Sent to <span class="text-ink">{form.email}</span>. The link is good for one click.
+        Sent to <span class="text-ink">{form.email}</span>. The link works once.
       </p>
+      <p class="mt-2 text-ink-muted">You can close this window.</p>
     </div>
   {:else}
     <form method="POST" use:enhance class="mt-8 space-y-3">

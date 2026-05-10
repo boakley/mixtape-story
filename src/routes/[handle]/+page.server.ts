@@ -15,10 +15,6 @@ for (const [path, content] of Object.entries(csvFiles)) {
   if (match) csvByHandle[match[1]!] = content;
 }
 
-export const prerender = true;
-
-export const entries = () => Object.keys(csvByHandle).map((handle) => ({ handle }));
-
 export const load: PageServerLoad = ({ params }) => {
   const { handle } = params;
   const csv = csvByHandle[handle];

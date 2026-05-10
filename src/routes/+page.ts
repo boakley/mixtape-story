@@ -1,7 +1,5 @@
 import type { PageLoad } from './$types';
 
-export const prerender = true;
-
 const csvFiles = import.meta.glob('/src/lib/seed/*.csv', {
   query: '?raw',
   import: 'default',
