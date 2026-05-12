@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { triggerOgRender } from '$lib/server/og-render';
 import type { Actions, PageServerLoad } from './$types';
 
 const HANDLE_RE = /^[a-z][a-z0-9-]{0,30}[a-z0-9]$/;
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 };
 
 export const actions: Actions = {
-  default: async ({ request, locals: { supabase, safeGetSession } }) => {
+  default: async ({ request, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) throw redirect(303, '/login');
 
@@ -57,6 +58,10 @@ export const actions: Actions = {
         : error.message;
       return fail(400, { handle, displayName, error: message });
     }
+
+    // Seed an empty-state OG image so the mixtape is shareable from the first
+    // moment a handle exists. Renders the "A mixtape, waiting to begin" SVG.
+    triggerOgRender(handle, { fetch, platform });
 
     throw redirect(303, `/${handle}`);
   }

@@ -13,7 +13,14 @@ declare global {
       viewerHandle?: string | null;
       isAdmin?: boolean;
     }
-    // interface Platform {}
+    // Minimal shape for the Cloudflare Workers ExecutionContext we need —
+    // `waitUntil` keeps the Worker alive past the response so fire-and-forget
+    // fetches (e.g. the render-og trigger) finish before the isolate exits.
+    interface Platform {
+      context?: {
+        waitUntil(promise: Promise<unknown>): void;
+      };
+    }
   }
 }
 

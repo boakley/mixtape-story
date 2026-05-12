@@ -4,6 +4,7 @@ import { resolveSong, MusicServiceError, normalizeSourceUrl } from '$lib/server/
 import { parseSongList, resolveBatch } from '$lib/server/music/parse-list';
 import { searchCached } from '$lib/server/music/itunes-cache';
 import type { Track } from '$lib/server/music/types';
+import { triggerOgRender } from '$lib/server/og-render';
 import type { Actions, PageServerLoad } from './$types';
 
 type SongWithStory = SongRow & { stories: { text: string } | { text: string }[] | null };
@@ -75,7 +76,7 @@ async function nextPosition(
 
 export const actions: Actions = {
   // Add a single song manually (no URL resolution).
-  manual: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  manual: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
 
@@ -109,13 +110,14 @@ export const actions: Actions = {
     if (insertErr || !song) return fail(500, { error: insertErr?.message ?? 'Could not add song' });
 
     await supabase.from('stories').insert({ song_id: song.id, text: '' });
+    triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
   },
 
   // Add one song from a picked Track payload (Search tab). Skips URL resolution
   // since we already have canonical metadata. Inserts as link_status='pending';
   // the Odesli worker fills in the universal songlink_url asynchronously.
-  add_track: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  add_track: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
     const own = await getOwnerOrFail(supabase, params.handle, user.id);
@@ -165,13 +167,14 @@ export const actions: Actions = {
       .single();
     if (insertErr || !song) return fail(500, { error: insertErr?.message ?? 'Insert failed' });
     await supabase.from('stories').insert({ song_id: song.id, text: '' });
+    triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
   },
 
   // Resolve a pasted single-song URL (Apple Music, Spotify, YouTube Music, etc).
   // Always inserts one row. Playlist URLs are not supported here — use the
   // text-list paste flow (`parse_list` action) for bulk adds.
-  resolve: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  resolve: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
 
@@ -222,13 +225,14 @@ export const actions: Actions = {
 
     if (insertErr || !song) return fail(500, { error: insertErr?.message ?? 'Could not add song' });
     await supabase.from('stories').insert({ song_id: song.id, text: '' });
+    triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
   },
 
   // Commit the preview rows the user picked from a playlist or list resolution.
   // Each row with a non-empty normalizedSourceUrl goes in as 'pending' (or 'done'
   // on a cache hit); rows with an empty source URL go in as manual entries.
-  import_playlist: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  import_playlist: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
 
@@ -307,6 +311,8 @@ export const actions: Actions = {
         .from('stories')
         .insert(created.map((r) => ({ song_id: (r as { id: string }).id, text: '' })));
     }
+
+    triggerOgRender(params.handle, { fetch, platform });
 
     return { ok: true, imported: created.length };
   },
@@ -447,7 +453,7 @@ export const actions: Actions = {
     return { ok: true };
   },
 
-  save_meta: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  save_meta: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
     const own = await getOwnerOrFail(supabase, params.handle, user.id);
@@ -475,13 +481,14 @@ export const actions: Actions = {
       .eq('id', songId)
       .eq('owner_id', own.ownerId);
     if (updErr) return fail(500, { error: updErr.message });
+    triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
   },
 
   // Persist a new song order from the drag-and-drop UI. Takes the full ordered
   // ID array and rewrites positions 1..N. Safe to run concurrently because each
   // owner only ever has one tab actively editing.
-  reorder: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  reorder: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
     const own = await getOwnerOrFail(supabase, params.handle, user.id);
@@ -513,10 +520,11 @@ export const actions: Actions = {
         .eq('id', ids[i])
         .eq('owner_id', own.ownerId);
     }
+    triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
   },
 
-  delete: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+  delete: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
     const own = await getOwnerOrFail(supabase, params.handle, user.id);
@@ -532,6 +540,7 @@ export const actions: Actions = {
       .eq('id', songId)
       .eq('owner_id', own.ownerId);
     if (delErr) return fail(500, { error: delErr.message });
+    triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
   }
 };

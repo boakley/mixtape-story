@@ -51,9 +51,14 @@
   <meta property="og:description" content={ogDescription} />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://mixtapestory.com/{data.handle}" />
+  <!-- og:image points directly at the Storage URL where the render-og Edge
+       Function writes the pre-rendered PNG. Direct (not via our /og/{handle}
+       SvelteKit endpoint) because some social-platform preview engines don't
+       follow redirects, and Storage already returns the right Content-Type
+       and cache headers. -->
   <meta
     property="og:image"
-    content="https://mixtapestory.com/og/{data.handle}"
+    content="https://kudxongbgeaylfpcmick.supabase.co/storage/v1/object/public/og-images/{data.handle}.png"
   />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -62,7 +67,7 @@
   <meta name="twitter:description" content={ogDescription} />
   <meta
     name="twitter:image"
-    content="https://mixtapestory.com/og/{data.handle}"
+    content="https://kudxongbgeaylfpcmick.supabase.co/storage/v1/object/public/og-images/{data.handle}.png"
   />
 </svelte:head>
 
