@@ -372,17 +372,35 @@ Failure modes to surface in UI:
 
 ### 10. OG image generation
 
-`/{handle}/og.png` is the single most important pixel surface in the product (per `docs/design-notes.md`). The endpoint:
+> **Status (2026-05-12):** Typography SVG shipped; PNG rasterization deferred.
+> Original spec was "album-art mosaic via `workers-og`"; reality landed at
+> artist-name typography (the "company we're in" memo) which doesn't need
+> album art at all.
 
-1. Loads profile + first 9 songs (ordered by position) including their `album_art_url`.
-2. Composes a 3×3 mosaic — falling back to 2×2 if fewer than 9 songs, or a single-art card if 1–3 songs.
-3. Overlays `{Display Name}'s soundtrack` and `{count} songs · {year_range}` using the same typography as the on-page header.
-4. Returns PNG with:
-   - `Cache-Control: public, max-age=60, s-maxage=86400, stale-while-revalidate=86400`
-   - `ETag: "{playlist.updated_at-timestamp}"`
-5. The page's `<meta property="og:image">` URL appends `?v={updated_at}` so a song-add invalidates the unfurl naturally.
+`/og/[handle]` is the single most important pixel surface in the product (per `docs/design-notes.md`). The original spec called for an album-art mosaic; the actual implementation went typography-first.
 
-Implementation uses `workers-og`'s JSX-like API. Album art is fetched in parallel inside the worker; if any fails, fall back to a tinted placeholder rather than failing the whole image.
+**What shipped (commit `54bd9f8`):**
+
+- New endpoint at `/og/[handle]` returns a hand-written 1200×630 SVG card. Composition: site URL chip → `{Display Name}'s mixtape` title → thin rule → up to 3 wrapped lines of deduped artist names → "…and N more" tail → cassette brand mark (bottom-right, identical SVG path to `static/favicon.svg`).
+- `og:image` and `twitter:image` meta tags on `/{handle}` point at the endpoint. `twitter:card` upgraded to `summary_large_image`.
+- `Cache-Control: public, max-age=300, s-maxage=300` for now. Will likely shorten when we add cache-busting via `?v={updated_at}`.
+
+**Rasterization deferred:**
+
+The SVG works for Twitter, Discord, Slack. WhatsApp's preview engine doesn't reliably render SVG; it will fall back to text-only (`og:title` + `og:description`) — degraded but not catastrophic.
+
+Tried: `workers-og` (its bundled wasm broke under Vite); `@resvg/resvg-wasm` + `vite-plugin-wasm` (the plugin couldn't resolve resvg's wasm-bindgen `wbg` import because resvg ships its bindings inline in `index.mjs` rather than the separate-file layout the plugin expects). Cloudflare Workers' hard ban on `WebAssembly.instantiate(bytes)` closes the fetch-and-compile path entirely.
+
+Working future paths, all with real cost:
+
+- **Cloudflare Browser Rendering** (headless Chrome on the edge). Official, beautiful, ~$5/mo minimum + per-page invocations.
+- **Pre-generate PNGs at write time** (job queue or trigger-on-edit, store in R2 or Supabase Storage). Significant new infrastructure for a v1 audience of 20.
+- **External screenshot service** (urlbox, screenshotone, etc.). Free tier exists; adds a third-party dependency for the OG image specifically.
+- **Eject from Vite for the OG endpoint only** — author the worker manually with esbuild or wrangler's native wasm handling. Surgical but increases build-time complexity.
+
+Revisit when: WhatsApp text-only fallback proves too lossy in writing-group use, OR the audience grows past the early group and shareability becomes a marketing concern, OR one of the four paths gets cheaper.
+
+**Cache busting (deferred too):** when rasterization lands, add `?v={updated_at-timestamp}` to the `og:image` meta tag so song-adds invalidate the unfurl naturally.
 
 ### 11. WhatsApp share + Ask flow
 

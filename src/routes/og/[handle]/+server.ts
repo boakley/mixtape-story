@@ -8,10 +8,19 @@ import type { RequestHandler } from './$types';
 // per the moments-not-identities principle) and shows the first 7 in
 // mixtape order plus a "…and N more" tail when there are leftovers.
 //
-// Renders SVG directly for v1. SVG works for Twitter, Discord, Slack, and
-// any browser-rendered preview. WhatsApp's preview engine doesn't reliably
-// support SVG; rasterization to PNG is a follow-up before we cut over to
-// the share-to-WhatsApp flow.
+// Renders SVG. Rasterization to PNG was attempted via @resvg/resvg-wasm but
+// hit two compounding constraints: Cloudflare Workers forbid runtime
+// WebAssembly.instantiate(bytes), and `vite-plugin-wasm` can't bridge
+// @resvg/resvg-wasm's wasm-bindgen "wbg" import (the package ships its
+// bindings inline in index.mjs, not as the separate-file layout the plugin
+// expects). Working paths from here — Cloudflare Browser Rendering, a
+// pre-generation pipeline, an external screenshot service — all carry real
+// cost. Deferred until there's a clearer signal that the typography-only
+// SVG isn't sufficient.
+//
+// What this means for each platform's unfurl:
+// - Twitter, Discord, Slack: render the SVG card directly.
+// - WhatsApp: degrades to og:title + og:description text-only preview.
 
 const PAPER = '#fdfcf8';
 const INK = '#1a1816';
@@ -43,9 +52,14 @@ function escapeXml(s: string): string {
 /**
  * Wrap a long single-line string across up to `maxLines` lines, breaking on
  * separators. Returns the lines as separate strings. SVG `<text>` doesn't
- * wrap natively, so we render multiple `<tspan>` rows.
+ * wrap natively, so we render multiple lines.
  */
-function wrapAtSeparator(text: string, separator: string, maxCharsPerLine: number, maxLines: number): string[] {
+function wrapAtSeparator(
+  text: string,
+  separator: string,
+  maxCharsPerLine: number,
+  maxLines: number
+): string[] {
   const parts = text.split(separator);
   const lines: string[] = [];
   let current = '';
@@ -102,20 +116,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase }, setHea
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <rect width="1200" height="630" fill="${PAPER}"/>
 
-  <!-- top bar: site URL chip -->
   <text x="96" y="120" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="22" letter-spacing="3" fill="${INK_MUTED}">
     MIXTAPESTORY.COM
   </text>
 
-  <!-- title -->
   <text x="96" y="220" font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, serif" font-size="78" fill="${INK}">
     ${escapeXml(title)}
   </text>
 
-  <!-- thin rule -->
   <line x1="96" y1="280" x2="1104" y2="280" stroke="${RULE}" stroke-width="1"/>
 
-  <!-- artist lines -->
   ${artistLines
     .map(
       (line, i) =>
@@ -129,8 +139,6 @@ export const GET: RequestHandler = async ({ params, locals: { supabase }, setHea
       : ''
   }
 
-  <!-- cassette brand mark, bottom-right (typography is left-aligned, so the
-       right side stays clear regardless of how long the artist lines wrap) -->
   <g transform="translate(1004, 496)">
     ${CASSETTE_SVG}
   </g>
