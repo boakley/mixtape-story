@@ -610,6 +610,21 @@ Apple's Performance Partners program lets you append `&at=<token>` to Apple Musi
 - Per-click revenue is tiny. Not relevant until scale.
 - Wiring is a one-liner if/when it matters: wrap any `music.apple.com` URL with the `at=` query param at render time.
 
+### Other revisions to the original Phase 1b spec
+
+Two decisions in the original table at the top of this doc were reversed during implementation:
+
+- **Reorder UX (decision #3):** Originally "arrows only; drag-and-drop deferred to v1.1." Reversed once the editor was used with real-paste-list mixtapes — clicking `↑` 40 times to move a row from position 47 to position 7 is unacceptable. Now **drag-and-drop via `svelte-dnd-action`**, with a grip icon on the left of each row and full keyboard support (Space to pick up, ↑/↓ to move, Space to drop). The arrow-button code is gone. ~1 hour of work; should have been there from the start.
+- **Resolution-worker secrets (decision #6):** Originally "Edge Function gets the service-role key from Supabase secrets without us shipping it around." This was true for the Edge Function itself (which reads `SUPABASE_SERVICE_ROLE_KEY` from its environment), but glossed over the fact that the **pg_cron job that *calls* the function** also needs a service-role key at SQL-runtime, in its `Authorization: Bearer …` header. The original approach (migration 0006) used `current_setting('app.settings.*')` and assumed those values could be set via `ALTER DATABASE` or the dashboard's "Custom Postgres Config" panel. **Neither works on hosted Supabase** — `ALTER DATABASE` is permission-denied for the `postgres` role, and the Custom Config panel only accepts well-known GUCs. Migration **0009** rewrote the cron job to read from **Supabase Vault** (`vault.decrypted_secrets`). The two secrets `project_url` and `service_role_key` are stored once per environment via the snippet at `supabase/snippets/set_cron_secrets.sql`.
+
+### Editor UX refinements
+
+After the initial editor shipped, three quick passes tightened it before the prod cutover:
+
+- **Compact rows.** The original layout (border + p-4 + title + artist on separate lines + dedicated action-button row + always-visible story preview) was ~108px per row, fitting ~3 songs on a laptop. Collapsed to a single-line `⠿ year · Title · Artist · Listen · Edit · Story · ✕` at ~28px per row. Story preview only shows when the row is in story-edit mode; collapsed rows display a `Story✓` indicator if a story exists.
+- **Year prompt language.** The placeholder "Memory year — what year has meaning attached to this song?" was reworked into a fill-in-the-blank sentence: `This song reminds me of the year [____]`. The DB column stays `memory_year`; only the UI changes. The framing makes the field's meaning self-evident.
+- **30s preview as Listen placeholder.** iTunes Search returns a `previewUrl` for every song (a 30-second m4a, no auth). Stored in the new `preview_url` column (migration 0008) and surfaced as an inline `▷ Preview` button whenever `link_status !== 'done'` but a preview is available. Bridges the 1-2 minute Odesli resolution window without falling back to multi-destination URL gymnastics.
+
 ### Apple Music API (revisit — Developer Program is active)
 
 Bryan enrolled in the **Apple Developer Program** on 2026-05-11. The official Apple Music API at `api.music.apple.com` is now an available option but is **not yet wired up**. The editor still uses the public iTunes Search endpoint; the cache + concurrency-3 throttle handle the 20/min ceiling fine at writing-group scale.

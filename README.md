@@ -120,17 +120,37 @@ flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
   ```
 
 - **Resolution worker**: Edge Function at `supabase/functions/resolve-queue/`,
-  triggered every minute by `pg_cron` (migration 0006). Before the cron job will
-  fire successfully, two database parameters must be set once (Supabase dashboard →
-  Settings → Database → Custom postgres parameters):
+  triggered every minute by `pg_cron`. Migration 0006 scheduled the first version
+  of the job; migration 0009 rewrote it to read its secrets from **Supabase
+  Vault**. Before the cron job can call the function, two secrets must exist in
+  `vault.secrets`. Paste the snippet at
+  [`supabase/snippets/set_cron_secrets.sql`](supabase/snippets/set_cron_secrets.sql)
+  into the dashboard SQL editor (substituting the service-role JWT) and run it.
+  Verify with:
 
-  - `app.settings.supabase_url` — `https://kudxongbgeaylfpcmick.supabase.co`
-  - `app.settings.service_role_key` — the service-role key
+  ```sql
+  select name, length(decrypted_secret) as len from vault.decrypted_secrets
+  where name in ('project_url', 'service_role_key');
+  ```
+
+  (Note: `ALTER DATABASE postgres SET app.settings.*` does **not** work on
+  hosted Supabase — permission denied — and the "Custom Postgres Config"
+  dashboard panel only accepts well-known GUCs. Vault is the supported pattern
+  for SQL-readable secrets.)
 
   Deploy the function with:
 
   ```sh
   pnpm exec supabase functions deploy resolve-queue --no-verify-jwt
+  ```
+
+  Monitor recent invocations via the dashboard SQL editor:
+
+  ```sql
+  select runid, status, return_message, start_time
+  from cron.job_run_details
+  where command like '%resolve-queue%'
+  order by start_time desc limit 5;
   ```
 
 - **Admin queue**: `/admin/queue` (page) and `/api/admin/queue` (JSON). Access is

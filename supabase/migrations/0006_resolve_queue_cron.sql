@@ -3,11 +3,20 @@
 --   1. The `resolve-queue` Edge Function deployed:
 --        supabase functions deploy resolve-queue --no-verify-jwt
 --   2. `pg_cron` and `pg_net` extensions (both available in hosted Supabase).
---   3. Two settings, set once per database (manually or via dashboard):
---        select set_config('app.settings.supabase_url', 'https://<ref>.supabase.co', false);
---        select set_config('app.settings.service_role_key', '<service role key>', false);
---      For production these should be set as database parameters via the dashboard
---      (Settings → Database → Custom postgres parameters) so they survive restarts.
+--   3. Two database-level settings, set once per project via the SQL editor
+--      (Dashboard → SQL Editor → New query) so the cron job's SQL context
+--      can read them with current_setting():
+--
+--        alter database postgres set app.settings.supabase_url
+--          = 'https://<project-ref>.supabase.co';
+--        alter database postgres set app.settings.service_role_key
+--          = '<service role JWT>';
+--
+--      ALTER DATABASE persists across restarts. The "Custom Postgres Config"
+--      dashboard panel will NOT work — it only accepts well-known GUCs
+--      (statement_timeout, work_mem, etc.), not the `app.settings.*` namespace.
+--      App env vars (Cloudflare secrets, etc.) also will NOT work — pg_cron
+--      runs inside Postgres and can't see them.
 --
 -- The cron job posts to the Edge Function with the service-role key in the
 -- Authorization header; the function uses that key internally.
