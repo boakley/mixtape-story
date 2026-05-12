@@ -60,19 +60,33 @@
           type="button"
           onclick={() => (expandedInCompact = !expandedInCompact)}
           aria-expanded={expanded}
-          class="group flex min-w-0 flex-1 items-baseline gap-2 text-left"
+          title={expanded ? 'Hide story' : 'Show story'}
+          class="group flex min-w-0 flex-1 items-start gap-2 text-left"
         >
-          <span class="min-w-0 flex-1 truncate text-base leading-snug">
-            <span class="text-ink group-hover:text-accent">{song.title}</span>
+          <span class="min-w-0 flex-1 leading-snug">
+            <!-- Mobile (compact): title on its own line, artist on a second
+                 smaller line. Frees up the cramped horizontal space.
+                 Desktop: title and artist join inline on one row. -->
+            <span class="block truncate text-base sm:inline">
+              <span class="text-ink group-hover:text-accent">{song.title}</span>
+              {#if song.artist}
+                <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
+              {/if}
+            </span>
             {#if song.artist}
-              <span class="text-ink-muted"> · {song.artist}</span>
+              <span class="block truncate text-sm text-ink-muted sm:hidden">{song.artist}</span>
             {/if}
           </span>
           <span
-            class="shrink-0 text-sm leading-none text-ink-muted transition-transform group-hover:text-accent {expanded
+            class="shrink-0 pt-1 text-ink-muted transition-transform group-hover:text-accent {expanded
               ? 'rotate-90'
               : ''}"
-            aria-hidden="true">›</span>
+            aria-hidden="true"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 2 10 7 4 12" />
+            </svg>
+          </span>
         </button>
       {:else}
         <h2 class="min-w-0 flex-1 text-xl leading-tight text-ink sm:text-2xl">
