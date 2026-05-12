@@ -432,6 +432,13 @@ export const actions: Actions = {
     const songId = String(data.get('song_id') ?? '');
     const text = String(data.get('text') ?? '');
     if (!songId) return fail(400, { error: 'Missing song_id' });
+    // Mirror the DB CHECK constraint (migration 0010). Bouncing here gives
+    // a clean error message instead of a generic Postgres failure.
+    if (text.length > 10_000) {
+      return fail(400, {
+        error: `Story is ${text.length.toLocaleString()} characters. Max is 10,000.`
+      });
+    }
 
     const { error: upsertErr } = await supabase
       .from('stories')

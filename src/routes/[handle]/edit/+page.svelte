@@ -19,6 +19,19 @@
   let openMetaFor = $state<string | null>(null);
   let confirmingDelete = $state<string | null>(null);
 
+  // Local working copy of the currently-open story so we can show a live
+  // character counter and enforce the 10k cap matching the DB constraint.
+  let storyDraft = $state('');
+  const STORY_MAX = 10_000;
+  function toggleStory(song: { id: string; story_text: string }) {
+    if (openStoryFor === song.id) {
+      openStoryFor = null;
+    } else {
+      openStoryFor = song.id;
+      storyDraft = song.story_text;
+    }
+  }
+
   // Local copy of the song list so drag-and-drop can re-order optimistically
   // before the server confirms.
   let songs = $derived(data.songs);
@@ -697,7 +710,7 @@
 
             <button
               type="button"
-              onclick={() => (openStoryFor = openStoryFor === song.id ? null : song.id)}
+              onclick={() => toggleStory(song)}
               class="shrink-0 px-1.5 text-xs text-ink-muted hover:text-accent"
               title={song.story_text ? 'Edit story' : 'Write story'}
             >
@@ -799,12 +812,18 @@
               <textarea
                 name="text"
                 rows="6"
+                maxlength={STORY_MAX}
+                bind:value={storyDraft}
                 placeholder="Why does this song matter? Markdown supported."
                 class="w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm leading-relaxed"
-                >{song.story_text}</textarea
-              >
-              <div class="flex items-center justify-between text-xs text-ink-muted">
+              ></textarea>
+              <div class="flex items-center justify-between gap-3 text-xs text-ink-muted">
                 <span>Markdown supported</span>
+                <span
+                  class:text-accent={storyDraft.length > STORY_MAX * 0.95}
+                >
+                  {storyDraft.length.toLocaleString()} / {STORY_MAX.toLocaleString()}
+                </span>
                 <button
                   type="submit"
                   class="rounded-md bg-accent px-3 py-1.5 text-sm text-paper hover:bg-ink"
