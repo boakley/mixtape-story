@@ -135,7 +135,8 @@ Deno.serve(async (req: Request) => {
         loadSystemFonts: false,
         defaultFontFamily: 'Crimson Pro'
       },
-      fitTo: { mode: 'width', value: 1200 }
+      // SVG declares its own viewBox/size (1080×1080). No fitTo override.
+      fitTo: { mode: 'original' }
     });
     const pngBytes = resvg.render().asPng();
 

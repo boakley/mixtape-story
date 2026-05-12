@@ -1,26 +1,23 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-// Per-mixtape OG image. 1200x630, typography-only, artist-name-first per the
-// "company we're in" design memo: artist names spark curiosity ("which Led
-// Zeppelin song?") where song titles would close the loop before someone
-// clicks. Dedupes repeat artists (same band can show up twice in a mixtape
-// per the moments-not-identities principle) and shows the first 7 in
-// mixtape order plus a "…and N more" tail when there are leftovers.
+// Per-mixtape OG image source — 1080×1080 SVG, typography-only,
+// artist-name-first per the "company we're in" design memo. Dedupes repeat
+// artists (same band can show up twice per the moments-not-identities
+// principle) and shows up to 5 wrapped lines plus a "…and N more" tail.
 //
-// Renders SVG. Rasterization to PNG was attempted via @resvg/resvg-wasm but
-// hit two compounding constraints: Cloudflare Workers forbid runtime
-// WebAssembly.instantiate(bytes), and `vite-plugin-wasm` can't bridge
-// @resvg/resvg-wasm's wasm-bindgen "wbg" import (the package ships its
-// bindings inline in index.mjs, not as the separate-file layout the plugin
-// expects). Working paths from here — Cloudflare Browser Rendering, a
-// pre-generation pipeline, an external screenshot service — all carry real
-// cost. Deferred until there's a clearer signal that the typography-only
-// SVG isn't sufficient.
+// Why square (not the 1200×630 Twitter/Facebook standard)?
+// WhatsApp + iMessage render hero previews only for square-ish images;
+// landscape 1200×630 collapses to a tiny left-side thumbnail and the
+// typography becomes unreadable. The writing-group audience lives in
+// those two clients, so we optimize for them. Twitter/Discord/Slack
+// render the square image fine — slightly different card layout, still
+// legible.
 //
-// What this means for each platform's unfurl:
-// - Twitter, Discord, Slack: render the SVG card directly.
-// - WhatsApp: degrades to og:title + og:description text-only preview.
+// SVG, not PNG. The render-og Supabase Edge Function consumes this
+// endpoint and rasterizes via @resvg/resvg-wasm (Deno-native, no
+// Cloudflare-Workers wasm-bindgen friction). The PNG that social
+// platforms actually fetch is the Storage URL written by that function.
 
 const PAPER = '#fdfcf8';
 const INK = '#1a1816';
@@ -104,42 +101,47 @@ export const GET: RequestHandler = async ({ params, locals: { supabase }, setHea
     uniqueArtists.push(a);
   }
 
-  const VISIBLE = 7;
+  const VISIBLE = 10;
   const visible = uniqueArtists.slice(0, VISIBLE);
   const remaining = uniqueArtists.length - visible.length;
 
   const title = `${profile.display_name}'s mixtape`;
   const artistLine = visible.length > 0 ? visible.join(' · ') : 'A mixtape, waiting to begin';
   const tail = remaining > 0 ? `…and ${remaining} more` : '';
-  const artistLines = wrapAtSeparator(artistLine, ' · ', 42, 3);
+  // Square canvas is 1080 wide with 88px gutters → ~904px of usable width.
+  // At 44px serif, average char width is ~24px → ~37 chars/line. Five lines
+  // fits ~185 chars of artist text, which covers most mixtapes in full.
+  const artistLines = wrapAtSeparator(artistLine, ' · ', 37, 5);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
-  <rect width="1200" height="630" fill="${PAPER}"/>
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+  <rect width="1080" height="1080" fill="${PAPER}"/>
 
-  <text x="96" y="120" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="22" letter-spacing="3" fill="${INK_MUTED}">
+  <text x="88" y="140" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" letter-spacing="3" fill="${INK_MUTED}">
     MIXTAPESTORY.COM
   </text>
 
-  <text x="96" y="220" font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, serif" font-size="78" fill="${INK}">
+  <text x="88" y="260" font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, serif" font-size="92" fill="${INK}">
     ${escapeXml(title)}
   </text>
 
-  <line x1="96" y1="280" x2="1104" y2="280" stroke="${RULE}" stroke-width="1"/>
+  <line x1="88" y1="320" x2="992" y2="320" stroke="${RULE}" stroke-width="1"/>
 
   ${artistLines
     .map(
       (line, i) =>
-        `<text x="96" y="${380 + i * 60}" font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, serif" font-size="40" fill="${INK}">${escapeXml(line)}</text>`
+        `<text x="88" y="${440 + i * 70}" font-family="'Iowan Old Style', 'Palatino Linotype', Georgia, serif" font-size="44" fill="${INK}">${escapeXml(line)}</text>`
     )
     .join('\n  ')}
 
   ${
     tail
-      ? `<text x="96" y="${380 + artistLines.length * 60 + 10}" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26" fill="${INK_MUTED}">${escapeXml(tail)}</text>`
+      ? `<text x="88" y="${440 + artistLines.length * 70 + 14}" font-family="ui-sans-serif, system-ui, sans-serif" font-size="30" fill="${INK_MUTED}">${escapeXml(tail)}</text>`
       : ''
   }
 
-  <g transform="translate(1004, 496)">
+  <!-- cassette brand mark, bottom-right. Typography is left-aligned so the
+       right side stays clear regardless of artist-line width. -->
+  <g transform="translate(880, 880)">
     ${CASSETTE_SVG}
   </g>
 </svg>`;
