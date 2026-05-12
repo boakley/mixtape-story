@@ -10,6 +10,8 @@ declare global {
     interface PageData {
       session?: Session | null;
       user?: User | null;
+      viewerHandle?: string | null;
+      isAdmin?: boolean;
     }
     // interface Platform {}
   }

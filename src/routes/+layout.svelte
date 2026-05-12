@@ -1,9 +1,10 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import type { Snippet } from 'svelte';
   import '../app.css';
   import type { LayoutData } from './$types';
 
-  type Props = { data: LayoutData; children: () => unknown };
+  type Props = { data: LayoutData; children: Snippet };
   let { data, children }: Props = $props();
 
   let menuOpen = $state(false);
@@ -78,6 +79,25 @@
         <p class="truncate px-3 py-2 text-xs text-ink-muted">
           Signed in as <span class="text-ink">{data.user.email}</span>
         </p>
+        <hr class="border-rule" />
+        {#if data.viewerHandle}
+          <a
+            href="/{data.viewerHandle}"
+            onclick={closeMenu}
+            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          >
+            My mixtape
+          </a>
+        {/if}
+        {#if data.isAdmin}
+          <a
+            href="/admin/queue"
+            onclick={closeMenu}
+            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          >
+            Admin
+          </a>
+        {/if}
         <hr class="border-rule" />
         <form method="POST" action="/logout">
           <button

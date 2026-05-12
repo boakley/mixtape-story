@@ -1,5 +1,13 @@
 # Phase 1b — Editor
 
+> **Status note (2026-05-11):** mid-implementation, the editor's primary input changed
+> from "paste an Apple Music playlist URL" to "paste a free-text song list, resolved
+> via the iTunes Search API." User-created Apple playlists can't be scraped (the
+> embed page is a SPA shell that fetches data from an auth-required internal API),
+> and the text-list path turned out to be both simpler and more service-neutral.
+> See [Design pivot — text-list as primary input](#design-pivot--text-list-as-primary-input) at the bottom of this doc. The rest of this page reflects the original intent;
+> the pivot section is the source of truth for what shipped.
+
 This doc captures the design for Phase 1b. Phase 1a (magic-link auth, profiles, `/{handle}/edit` doesn't exist yet) is live. Phase 1b adds the editor and migrates the read path from CSVs to the database.
 
 See [`PLAN.md`](PLAN.md) for the broader v1 scaffold. This doc supersedes the rough Phase 1b/1c sketch in PLAN.md.
@@ -549,3 +557,80 @@ Honest break-down. Each line is "focused work, including local testing":
 - [ ] All of the above works in production at `mixtapestory.com`.
 
 After this, Phase 1d (OG mosaic, Ask flow, PWA polish) starts.
+
+---
+
+## Design pivot — text-list as primary input
+
+Discovered mid-implementation that Apple's user-created playlists (`pl.u-…` prefix) can't be reached by HTML scraping — Apple serves an empty SPA shell that fetches the playlist data client-side from `amp-api.music.apple.com`, which requires an Apple Developer JWT bearer token. The MusicKit JS bundle explicitly forbids re-hosting that token, and the official Apple Music API needs a paid Developer account ($99/yr) plus JWT signing — both bigger lifts than Phase 1b was scoped for. Editorial playlists (`pl.<hash>`) *do* pre-render JSON-LD and the scrape worked on those, but those are the niche case; the writing group will overwhelmingly use their own user playlists.
+
+Rather than block on the paid-developer path, the editor pivoted to a different primary input shape: **paste a plain-text list of song titles and artists.** Each line is searched against the **iTunes Search API** (public, no auth, free, officially supported, ~20/min rate limit). The first match becomes the row; a per-row "try a different match" surface fetches additional candidates when the search returns the wrong version (live recordings, remixes, covers).
+
+### Why this is better than the original design
+
+1. **Service-neutral.** A free-text song list works for Spotify users, YouTube Music users, anyone — they don't need to share *to* Apple to use the editor. The original playlist-URL flow was Apple-only.
+2. **Lower friction in practice.** Writing-group members curating a mixtape are picking 10-50 *meaningful* songs; that list usually exists somewhere already (Notes, a doc, a chat thread). They're not bulk-cloning their music library. Free-text paste meets people where their content actually lives.
+3. **Officially supported endpoint.** iTunes Search is documented and stable. The HTML scrape was always going to break when Apple changed their markup.
+4. **Smaller codebase.** Removed `apple.ts` (~150 lines of JSON-LD parsing, regex matching, embed-URL conversion) and the entire playlist code path in the dispatcher.
+5. **Affiliate-friendly tail.** iTunes Search returns canonical Apple Music `trackViewUrl` values. If/when the product scales enough to bother, appending an Apple Performance Partners token to those URLs is a one-line change — tiny commission per Apple-Music-using listener, but free. Not wired up yet.
+
+### Resulting input modes
+
+The editor's top input is a three-mode tab:
+
+1. **Paste list** (default, primary): textarea → "Find songs" → preview screen with per-row checkbox, thumbnail, "try a different match" picker, and an "Import N songs" button. Rows that the search couldn't match are left unchecked but visible; the user can fix the query manually or remove them.
+2. **Single URL** (secondary): paste any one streaming-service URL → Odesli resolves → one row. Useful for "I just found this song, here's the link."
+3. **Manual** (last resort): no URL at all → inserts as `link_status='manual'`. Listen button stays disabled with the "No streaming link" tooltip.
+
+The Odesli queue worker still resolves song.link URLs in the background — every row from the text-list path lands as `link_status='pending'` with `source_url = trackViewUrl`, and the worker fills in the universal `songlink_url` over the next minute or two.
+
+### Server-side bits
+
+- `src/lib/server/music/itunes.ts` — `searchOne(query)` and `searchMany(query, limit)` against `https://itunes.apple.com/search?term=...&entity=song`. Returns our `Track` shape directly.
+- `src/lib/server/music/parse-list.ts` — `parseSongList(text)` accepts either quoted-title shape (one or many `"Title" Artist` segments on any number of lines) or newline-delimited shape (`Title — Artist`, `Title - Artist`, `Title by Artist`, or just `Title Artist`). Strips parenthetical annotations from the artist field. `resolveBatch(entries, searchOne, 4)` fans out with concurrency 4.
+- Editor actions: `parse_list` (text → preview), `search_alternates` (query → top-8 candidates), `import_playlist` (commits preview rows; handles entries without a `source_url` as `link_status='manual'`), plus the existing `resolve`/`manual`/per-row CRUD.
+
+### What got removed
+
+- `src/lib/server/music/apple.ts` (deleted).
+- The dispatcher's `services: MusicService[]` array, the playlist branch in the dispatcher, and all URL-pattern matching for Apple Music URLs. The dispatcher is now just `resolveSong(url) → odesliFallback(url)`.
+- The editor UI's playlist-URL detection logic — `?/resolve` now always inserts a single row, never a preview.
+
+### What it doesn't do
+
+- **No catalog beyond iTunes.** A song that isn't in Apple's catalog (very rare for mainstream Western music, more common for niche/regional/independent material) won't match. Workaround: paste the single-song URL via the URL tab, or use Manual.
+- **No Spotify/YouTube playlist URL import.** That would require those services' APIs and is back to "later phase" territory. Realistically the text-list path makes those redundant.
+- **No "wrong match? show alternates" memory.** If you swap a row to an alternate and then re-paste the same list, the same first match wins again. Acceptable for v0.
+
+### Affiliate (deferred)
+
+Apple's Performance Partners program lets you append `&at=<token>` to Apple Music URLs for commission on listeners who arrive via your link and subsequently subscribe or purchase. Worth knowing the scope:
+
+- The public `/{handle}` page links to **song.link/Odesli**, which redirects each viewer to *their* preferred streaming service. Commission only fires for viewers whose default is Apple Music.
+- Per-click revenue is tiny. Not relevant until scale.
+- Wiring is a one-liner if/when it matters: wrap any `music.apple.com` URL with the `at=` query param at render time.
+
+### Apple Music API (revisit — Developer Program is active)
+
+Bryan enrolled in the **Apple Developer Program** on 2026-05-11. The official Apple Music API at `api.music.apple.com` is now an available option but is **not yet wired up**. The editor still uses the public iTunes Search endpoint; the cache + concurrency-3 throttle handle the 20/min ceiling fine at writing-group scale.
+
+**Triggers to revisit this swap (any one is sufficient):**
+
+- Real users hitting the rate limit in normal use (cache + throttle make this unlikely until ~hundreds of users with frequent bulk paste).
+- A need for **reliable ISRCs** — iTunes Search often omits the `isrc` field; Apple Music API populates it consistently. Becomes load-bearing the moment we want to deduplicate songs across users, do cross-service matching, or expose anything keyed on ISRC.
+- A decision to **resurrect Apple-playlist URL paste** as a second bulk-import mode for Apple-Music users. The `/v1/catalog/<storefront>/playlists/<id>` endpoint serves curated and user playlists when the user is authenticated against their library. Note: this would *complement*, not replace, the text-list path — that flow is service-neutral and stays the primary input.
+- Multi-storefront localization (different storefronts for different regions).
+- An Apple Music–specific feature (artist deep links, chart data, recommendations) that the public Search endpoint can't provide.
+
+**Implementation when we swap (~half a day):**
+
+1. In the Apple Developer portal, create a **MusicKit identifier** and a **MusicKit private key**. Download the `.p8`. Note the Team ID and Key ID.
+2. Add Cloudflare secrets: `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID`, `APPLE_MUSIC_PRIVATE_KEY` (the `.p8` contents). Mirror in `.env.local` for dev.
+3. Add `jose` for ES256 JWT signing. Write ~20 lines that sign a developer token (ES256, `iss` = team, `kid` = key ID, `exp` ≤ 6 months). Cache and rotate daily.
+4. Swap `fetchSearch` internals in `src/lib/server/music/itunes.ts` to call `https://api.music.apple.com/v1/catalog/<storefront>/search?term=...&types=songs&limit=8` with `Authorization: Bearer <jwt>`. Map the response shape to the existing `Track` type.
+5. Everything else (the `MusicService` interface, `itunes_cache`, the throttle, `parse-list`, the search picker, the alternates picker, the editor UI, the read-path) stays untouched. The interface was designed for this swap.
+
+**What it does *not* automatically unlock:**
+
+- **Performance Partners affiliate** is a *separate* program with its own enrollment. Developer Program membership doesn't grant it.
+- **Spotify and YouTube Music** still need their own paths if they ever come back into scope — Apple Music API only sees Apple's catalog.

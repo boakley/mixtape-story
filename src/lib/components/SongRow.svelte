@@ -1,11 +1,29 @@
 <script lang="ts">
-  import type { SeedSong } from '$lib/seed/parse';
+  import PreviewButton from './PreviewButton.svelte';
+  import type { DisplaySong } from '$lib/types';
 
-  type Props = { song: SeedSong; view: 'expanded' | 'compact' };
+  type Props = { song: DisplaySong; view: 'expanded' | 'compact' };
   let { song, view }: Props = $props();
 
   let expandedInCompact = $state(false);
   const expanded = $derived(view === 'expanded' || expandedInCompact);
+
+  const listenTooltip = $derived.by(() => {
+    switch (song.linkStatus) {
+      case 'pending':
+        return 'Universal link is being generated. Usually ready within a few minutes.';
+      case 'failed':
+        return "Couldn't generate a universal link for this song.";
+      case 'manual':
+        return 'No streaming link for this song.';
+      default:
+        return '';
+    }
+  });
+
+  const listenEnabled = $derived(song.linkStatus === 'done' && !!song.songlinkUrl);
+  // While the universal link isn't ready, the 30s preview is the listen surface.
+  const showPreviewInstead = $derived(!listenEnabled && !!song.previewUrl);
 </script>
 
 <article
@@ -18,7 +36,7 @@
       ? 'pt-[0.1875rem] text-xs'
       : 'pt-0.5 text-sm'}"
   >
-    {song.year ?? ''}
+    {song.memoryYear ?? ''}
   </div>
 
   <div class="relative" aria-hidden="true">
@@ -62,15 +80,25 @@
         </h2>
       {/if}
 
-      {#if song.link}
+      {#if listenEnabled}
         <a
-          href={song.link}
+          href={song.songlinkUrl ?? '#'}
           target="_blank"
           rel="noopener noreferrer"
           class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
         >
           → Listen
         </a>
+      {:else if showPreviewInstead && song.previewUrl}
+        <PreviewButton url={song.previewUrl} />
+      {:else}
+        <span
+          title={listenTooltip}
+          aria-disabled="true"
+          class="shrink-0 cursor-not-allowed text-sm text-ink-muted"
+        >
+          → Listen
+        </span>
       {/if}
     </div>
 
@@ -84,14 +112,17 @@
       {:else if song.album}
         <p class="mt-1 text-xs text-ink-muted">{song.album}</p>
       {/if}
-      <div
-        class="mt-3 max-w-prose whitespace-pre-line text-base leading-relaxed text-ink {view ===
-        'compact'
-          ? 'pb-2'
-          : ''}"
-      >
-        {song.story}
-      </div>
+      {#if song.storyHtml}
+        <!-- marked output: raw HTML disabled at parse time; safe to inject. -->
+        <div
+          class="story prose-story mt-3 max-w-prose text-base leading-relaxed text-ink {view ===
+          'compact'
+            ? 'pb-2'
+            : ''}"
+        >
+          {@html song.storyHtml}
+        </div>
+      {/if}
     {/if}
   </div>
 </article>

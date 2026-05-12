@@ -1,5 +1,5 @@
 <script lang="ts">
-  import SongStoryCard from '$lib/components/poc/SongStoryCard.svelte';
+  import SongRow from '$lib/components/SongRow.svelte';
   import type { PageData } from './$types';
 
   type Props = { data: PageData };
@@ -25,7 +25,9 @@
   }
 
   const yearRange = $derived.by(() => {
-    const years = data.songs.map((s) => s.year).filter((y): y is number => y !== null);
+    const years = data.songs
+      .map((s) => s.memoryYear)
+      .filter((y): y is number => y !== null);
     if (years.length === 0) return null;
     const min = Math.min(...years);
     const max = Math.max(...years);
@@ -38,6 +40,8 @@
     const rest = titles.length - 4;
     return rest > 0 ? `${shown} · +${rest} more` : shown;
   });
+
+  const isOwner = $derived(data.user?.id && data.session && data.handle === data.viewerHandle);
 </script>
 
 <svelte:head>
@@ -89,13 +93,24 @@
         </button>
       </div>
     </div>
+
+    {#if isOwner}
+      <p class="mt-3 text-sm">
+        <a
+          href="/{data.handle}/edit"
+          class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+        >
+          Edit mixtape
+        </a>
+      </p>
+    {/if}
   </header>
 
   {#if data.songs.length === 0}
     <p class="text-ink-muted">No songs yet.</p>
   {:else}
-    {#each data.songs as song (song.position)}
-      <SongStoryCard {song} {view} />
+    {#each data.songs as song (song.id)}
+      <SongRow {song} {view} />
     {/each}
   {/if}
 
@@ -103,3 +118,44 @@
     <p>mixtapestory.com — in private testing.</p>
   </footer>
 </main>
+
+<style>
+  :global(.story p) {
+    margin: 0.75em 0;
+  }
+  :global(.story p:first-child) {
+    margin-top: 0;
+  }
+  :global(.story p:last-child) {
+    margin-bottom: 0;
+  }
+  :global(.story a) {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  :global(.story strong) {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+  :global(.story em) {
+    font-style: italic;
+  }
+  :global(.story ul),
+  :global(.story ol) {
+    margin: 0.75em 0;
+    padding-left: 1.5em;
+  }
+  :global(.story ul) {
+    list-style: disc;
+  }
+  :global(.story ol) {
+    list-style: decimal;
+  }
+  :global(.story blockquote) {
+    margin: 0.75em 0;
+    padding-left: 1em;
+    border-left: 2px solid var(--color-rule);
+    color: var(--color-ink-muted);
+  }
+</style>

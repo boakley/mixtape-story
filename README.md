@@ -101,4 +101,39 @@ Wrangler reads settings from [`wrangler.toml`](wrangler.toml) — notably `compa
 
 ## What this isn't (yet)
 
-Magic-link auth lives (Phase 1a). What's still missing: the editor UI (Phase 1b — `/{handle}/edit` form, songs/stories/media schema, Songlink API integration), the read-path DB migration (Phase 1c — `/{handle}` still reads from CSV), and Phase 1d polish (OG mosaic generator, Ask flow, PWA). See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence.
+Phase 1a (magic-link auth) and Phase 1b (editor, songs/stories schema, Apple Music
+adapter, Odesli queue worker, admin queue dashboard, DB-backed `/{handle}` read path)
+both live. What's still missing: Phase 1d polish — OG mosaic image generator, Ask
+flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
+[`docs/PHASE-1B.md`](docs/PHASE-1B.md) for the editor design.
+
+## Phase 1b operational notes
+
+- **Seed migration**: one-shot script at `scripts/migrate-seeds.ts`. Reads each seed
+  CSV, finds the matching profile (must have signed in once to exist), and inserts
+  `songs` + `stories` rows with `link_status='done'` (the CSVs already carry
+  `song.link/...` URLs). Run dry-first, then with `--apply`:
+
+  ```sh
+  SUPABASE_SERVICE_ROLE_KEY=… PUBLIC_SUPABASE_URL=… pnpm tsx scripts/migrate-seeds.ts
+  SUPABASE_SERVICE_ROLE_KEY=… PUBLIC_SUPABASE_URL=… pnpm tsx scripts/migrate-seeds.ts --apply
+  ```
+
+- **Resolution worker**: Edge Function at `supabase/functions/resolve-queue/`,
+  triggered every minute by `pg_cron` (migration 0006). Before the cron job will
+  fire successfully, two database parameters must be set once (Supabase dashboard →
+  Settings → Database → Custom postgres parameters):
+
+  - `app.settings.supabase_url` — `https://kudxongbgeaylfpcmick.supabase.co`
+  - `app.settings.service_role_key` — the service-role key
+
+  Deploy the function with:
+
+  ```sh
+  pnpm exec supabase functions deploy resolve-queue --no-verify-jwt
+  ```
+
+- **Admin queue**: `/admin/queue` (page) and `/api/admin/queue` (JSON). Access is
+  gated by the `ADMIN_EMAILS` env var — comma-separated, lowercase-compared. Set it
+  via `wrangler pages secret put ADMIN_EMAILS` for production and in `.env.local`
+  for dev.

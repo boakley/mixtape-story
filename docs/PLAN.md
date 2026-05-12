@@ -631,6 +631,7 @@ UI polish (typography, spacing, real empty states, the actual mosaic layout matc
 - Service worker / offline mode — explicitly skipped to avoid stale-asset bugs.
 - Playwright E2E — defer until UI is real enough to test.
 - Following / activity feed — likely never.
+- **Apple Music API swap (revisit).** The Apple Developer Program is active as of 2026-05-11, but the editor still uses the public iTunes Search endpoint. The swap is half-a-day of work behind the existing `MusicService` interface; defer until the rate ceiling becomes a real friction, ISRC reliability becomes load-bearing, or Apple-playlist URL paste comes back into scope. Full triggers + implementation steps live in [`PHASE-1B.md`](PHASE-1B.md#apple-music-api-revisit--developer-program-is-active).
 
 ---
 

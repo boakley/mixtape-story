@@ -1,7 +1,20 @@
 import { createServerClient } from '@supabase/ssr';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+
+// Surface every server-side error in the dev terminal. Without this, SvelteKit
+// quietly returns a 500 to the browser with no stack trace anywhere we can see.
+export const handleError: HandleServerError = ({ error, event, status }) => {
+  // eslint-disable-next-line no-console
+  console.error(`[handleError] ${event.request.method} ${event.url.pathname}${event.url.search} → ${status}`);
+  // eslint-disable-next-line no-console
+  console.error(error);
+  return {
+    message:
+      (error as { message?: string } | null)?.message ?? 'Unexpected server error'
+  };
+};
 
 const supabase: Handle = async ({ event, resolve }) => {
   event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
