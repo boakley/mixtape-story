@@ -718,12 +718,19 @@
             </button>
 
             {#if confirmingDelete === song.id}
-              <form method="POST" action="?/delete" use:enhance class="inline">
+              <form
+                method="POST"
+                action="?/delete"
+                use:enhance={() => async ({ update }) => {
+                  await update();
+                  confirmingDelete = null;
+                }}
+                class="inline"
+              >
                 <input type="hidden" name="song_id" value={song.id} />
                 <button
                   type="submit"
                   class="shrink-0 px-1.5 text-xs text-accent underline hover:text-ink"
-                  onclick={() => (confirmingDelete = null)}
                 >
                   Confirm
                 </button>
