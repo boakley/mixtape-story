@@ -4,6 +4,17 @@
 
   type Props = { data: PageData };
   let { data }: Props = $props();
+
+  // CTA shape depends on auth state. The same primary button serves three
+  // different journeys; copy + destination shifts based on what the visitor
+  // already has.
+  const cta = $derived(
+    data.user && data.viewerHandle
+      ? { label: 'Continue to your mixtape →', href: `/${data.viewerHandle}` }
+      : data.user
+        ? { label: 'Claim your handle →', href: '/onboarding' }
+        : { label: 'Make your own mixtape →', href: '/login' }
+  );
 </script>
 
 <svelte:head>
@@ -21,4 +32,4 @@
   <meta name="twitter:description" content="Share the songs, share the stories." />
 </svelte:head>
 
-<LandingHero handles={data.handles} />
+<LandingHero {cta} />

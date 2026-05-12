@@ -56,6 +56,39 @@
   });
 
   const isOwner = $derived(data.user?.id && data.session && data.handle === data.viewerHandle);
+
+  // Visitor CTA: only shown to someone who doesn't already have their own
+  // mixtape. Owners and signed-in users with handles see nothing; new
+  // visitors get the invitation. Variant ("make" vs "claim") depends on
+  // whether they're signed in but un-handled vs not signed in at all.
+  type Cta = { label: string; href: string } | null;
+  const visitorCta = $derived<Cta>(
+    isOwner
+      ? null
+      : data.user && data.viewerHandle
+        ? null
+        : data.user
+          ? { label: 'Claim your own handle →', href: '/onboarding' }
+          : { label: 'Make your own →', href: '/login' }
+  );
+
+  // Native share sheet on mobile (iOS Safari, Chrome, etc), with a WhatsApp
+  // click-to-chat fallback for desktop browsers without navigator.share.
+  function handleShare() {
+    const url = `https://mixtapestory.com/${data.handle}`;
+    const title = `${data.displayName}'s mixtape`;
+    const text = `${title} — ${url}`;
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      navigator.share({ title, text: title, url }).catch(() => {
+        // User cancelled or error — silent.
+      });
+      return;
+    }
+    // Fallback: open WhatsApp Web/Desktop with pre-filled text.
+    const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    if (typeof window !== 'undefined') window.open(wa, '_blank', 'noopener,noreferrer');
+  }
 </script>
 
 <svelte:head>
@@ -123,16 +156,23 @@
       </div>
     </div>
 
-    {#if isOwner}
-      <p class="mt-3 text-sm">
+    <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      {#if isOwner}
         <a
           href="/{data.handle}/edit"
           class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
         >
           Edit mixtape
         </a>
-      </p>
-    {/if}
+      {/if}
+      <button
+        type="button"
+        onclick={handleShare}
+        class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+      >
+        → Share
+      </button>
+    </div>
   </header>
 
   {#if data.songs.length === 0}
@@ -143,8 +183,19 @@
     {/each}
   {/if}
 
-  <footer class="mt-10 pt-6 text-xs text-ink-muted">
-    <p>mixtapestory.com — in private testing.</p>
+  <footer class="mt-10 border-t border-rule pt-6 text-sm text-ink-muted">
+    {#if visitorCta}
+      <p class="mb-2">
+        Inspired by this?{' '}
+        <a
+          href={visitorCta.href}
+          class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+        >
+          {visitorCta.label}
+        </a>
+      </p>
+    {/if}
+    <p class="text-xs">mixtapestory.com — in private testing.</p>
   </footer>
 </main>
 
