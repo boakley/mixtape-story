@@ -34,10 +34,24 @@
     return min === max ? `${min}` : `${min} — ${max}`;
   });
 
+  // The og:description shown beneath the unfurl title. Mirrors the OG image
+  // composition ("the company we're in" — see design memo): deduped artist
+  // names in mixtape order, not song titles. Song titles would close the
+  // loop before the recipient clicks.
   const ogDescription = $derived.by(() => {
-    const titles = data.songs.map((s) => s.title);
-    const shown = titles.slice(0, 4).join(' · ');
-    const rest = titles.length - 4;
+    const seen = new Set<string>();
+    const artists: string[] = [];
+    for (const s of data.songs) {
+      const a = s.artist?.trim();
+      if (!a) continue;
+      const key = a.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      artists.push(a);
+    }
+    if (artists.length === 0) return 'A mixtape, waiting to begin';
+    const shown = artists.slice(0, 4).join(' · ');
+    const rest = artists.length - 4;
     return rest > 0 ? `${shown} · +${rest} more` : shown;
   });
 
