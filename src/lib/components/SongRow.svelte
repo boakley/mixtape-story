@@ -56,12 +56,13 @@
   <div class="min-w-0">
     <div class="flex items-baseline justify-between gap-3">
       {#if view === 'compact'}
+        <h2 class="min-w-0 flex-1 text-base font-normal leading-snug">
         <button
           type="button"
           onclick={() => (expandedInCompact = !expandedInCompact)}
           aria-expanded={expanded}
           title={expanded ? 'Hide story' : 'Show story'}
-          class="group flex min-w-0 flex-1 items-start gap-2 text-left"
+          class="group flex w-full items-start gap-2 text-left"
         >
           <span class="min-w-0 flex-1 leading-snug">
             <!-- Mobile (compact): title on its own line, artist on a second
@@ -88,6 +89,7 @@
             </svg>
           </span>
         </button>
+        </h2>
       {:else}
         <h2 class="min-w-0 flex-1 text-xl leading-tight text-ink sm:text-2xl">
           {song.title}

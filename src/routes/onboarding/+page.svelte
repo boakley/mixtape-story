@@ -32,6 +32,8 @@
           autocorrect="off"
           spellcheck="false"
           value={form?.handle ?? ''}
+          aria-invalid={form?.error ? 'true' : undefined}
+          aria-describedby={form?.error ? 'onboarding-error' : undefined}
           class="flex-1 rounded-r-md border-0 bg-transparent px-1 py-2 text-base text-ink focus:outline-none"
           placeholder="bryan"
         />
@@ -45,13 +47,15 @@
         name="display_name"
         required
         value={form?.displayName ?? ''}
+        aria-invalid={form?.error ? 'true' : undefined}
+        aria-describedby={form?.error ? 'onboarding-error' : undefined}
         class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-base text-ink focus:border-accent focus:outline-none"
         placeholder="Bryan"
       />
     </label>
 
     {#if form?.error}
-      <p class="text-sm text-accent">{form.error}</p>
+      <p id="onboarding-error" role="alert" class="text-sm text-accent">{form.error}</p>
     {/if}
 
     <button

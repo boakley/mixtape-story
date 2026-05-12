@@ -20,7 +20,7 @@
   </p>
 
   {#if form?.sent}
-    <div class="mt-8 rounded-md border border-rule p-4 text-sm text-ink">
+    <div role="status" class="mt-8 rounded-md border border-rule p-4 text-sm text-ink">
       <p>Check your email for a sign-in link.</p>
       <p class="mt-2 text-ink-muted">
         Sent to <span class="text-ink">{form.email}</span>. The link works once.
@@ -37,12 +37,14 @@
           required
           autocomplete="email"
           value={form?.email ?? ''}
+          aria-invalid={form?.error ? 'true' : undefined}
+          aria-describedby={form?.error ? 'login-error' : undefined}
           class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-base text-ink focus:border-accent focus:outline-none"
         />
       </label>
 
       {#if form?.error}
-        <p class="text-sm text-accent">{form.error}</p>
+        <p id="login-error" role="alert" class="text-sm text-accent">{form.error}</p>
       {/if}
 
       <button

@@ -4,7 +4,7 @@
   let { cta }: Props = $props();
 </script>
 
-<section class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-5 py-12 sm:px-6 sm:py-16">
+<main class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-5 py-12 sm:px-6 sm:py-16">
   <h1 class="text-4xl leading-tight text-ink sm:text-5xl">
     mixtapestory<span class="text-accent">.</span>com
   </h1>
@@ -45,4 +45,4 @@
   </p>
 
   <p class="mt-12 text-xs italic text-ink-muted">In private testing.</p>
-</section>
+</main>

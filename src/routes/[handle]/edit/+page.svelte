@@ -281,12 +281,14 @@
       <ul class="mb-4 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
         {#each preview.tracks as orig, i}
           {@const row = rowFor(i)}
+          {@const titleId = `preview-track-${i}-title`}
           <li class="rounded-md border border-rule p-2 text-sm">
             <div class="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={selected[i] ?? false}
                 disabled={!!row.unmatched && !swap[i]}
+                aria-labelledby={titleId}
                 onchange={(e) =>
                   (selected = {
                     ...selected,
@@ -307,7 +309,7 @@
               {/if}
 
               <div class="min-w-0 flex-1">
-                <p class="truncate">
+                <p id={titleId} class="truncate">
                   <span class="text-ink">{row.title}</span>
                   {#if row.artist}
                     <span class="text-ink-muted"> · {row.artist}</span>
