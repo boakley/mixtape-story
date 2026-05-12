@@ -51,9 +51,19 @@
   <meta property="og:description" content={ogDescription} />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://mixtapestory.com/{data.handle}" />
-  <meta name="twitter:card" content="summary" />
+  <meta
+    property="og:image"
+    content="https://mixtapestory.com/og/{data.handle}"
+  />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{data.displayName}'s mixtape" />
   <meta name="twitter:description" content={ogDescription} />
+  <meta
+    name="twitter:image"
+    content="https://mixtapestory.com/og/{data.handle}"
+  />
 </svelte:head>
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">
