@@ -67,8 +67,12 @@
           <span class="min-w-0 flex-1 leading-snug">
             <!-- Mobile (compact): title on its own line, artist on a second
                  smaller line. Frees up the cramped horizontal space.
-                 Desktop: title and artist join inline on one row. -->
-            <span class="block truncate text-base sm:inline">
+                 Desktop: title and artist join inline on one row.
+                 The wrapper stays block on both — `truncate` (overflow:
+                 hidden + text-overflow: ellipsis + white-space: nowrap)
+                 doesn't apply to inline elements, so going `sm:inline`
+                 here breaks ellipsis on long classical titles. -->
+            <span class="block truncate text-base">
               <span class="text-ink group-hover:text-accent">{song.title}</span>
               {#if song.artist}
                 <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
