@@ -645,7 +645,7 @@ UI polish (typography, spacing, real empty states, the actual mosaic layout matc
 - Voice-memo upload UI (v1.1) — table and bucket exist, no UI.
 - Multi-playlist per user — schema currently has no `playlists` table; songs hang off `profiles` directly. Adding a `playlists` table later is straightforward and will require a one-pass migration of existing songs into a default playlist row.
 - Reorder + edit-song-metadata UI (v1.1) — the schema supports both (`position`, all fields mutable); only the editor UI is omitted.
-- Account deletion / data export — required eventually, not v1.
+- **Account deletion / data export.** Required eventually (GDPR Article 17 + 20, CCPA/CPRA, US state privacy laws). Design captured in [`docs/design-deletion.md`](design-deletion.md) — `/account` page reachable from the hamburger, with "Reset mixtape" and "Delete account" as separate destructive actions, typed-handle confirmation, plain-English consequence lists. Three open questions deferred until build time: handle reuse policy (tombstone vs free), audit trail (do we keep one), OG-image Storage cleanup. Build trigger: a real user asks, OR we open the door past the writing group, OR a second user-content table lands. Data export deferred entirely until requested.
 - Service worker / offline mode — explicitly skipped to avoid stale-asset bugs.
 - Playwright E2E — defer until UI is real enough to test.
 - Following / activity feed — likely never.
