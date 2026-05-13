@@ -8,14 +8,28 @@
   let { data, children }: Props = $props();
 
   let menuOpen = $state(false);
+  let adminMenuOpen = $state(false);
   let navEl: HTMLElement | undefined = $state();
 
   // Pages where the hamburger has nothing useful to offer.
   const HIDE_MENU_ON = new Set(['/login']);
   const showMenu = $derived(!HIDE_MENU_ON.has(page.url.pathname));
 
+  function openMenu() {
+    menuOpen = true;
+    // If the user is already on an admin page when they pop the menu,
+    // expand the admin submenu by default — they're more likely to be
+    // navigating within the section than out of it.
+    adminMenuOpen = page.url.pathname.startsWith('/admin');
+  }
+
   function closeMenu() {
     menuOpen = false;
+  }
+
+  function toggleMenu() {
+    if (menuOpen) closeMenu();
+    else openMenu();
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -37,7 +51,7 @@
 <nav bind:this={navEl} class="fixed top-3 right-3 z-50">
   <button
     type="button"
-    onclick={() => (menuOpen = !menuOpen)}
+    onclick={toggleMenu}
     aria-label={menuOpen ? 'Close menu' : 'Open menu'}
     aria-expanded={menuOpen}
     class="flex h-9 w-9 items-center justify-center rounded-full border border-rule bg-paper text-ink shadow-sm hover:text-accent [&_svg]:pointer-events-none"
@@ -90,20 +104,50 @@
           </a>
         {/if}
         {#if data.isAdmin}
-          <a
-            href="/admin/mixtapes"
-            onclick={closeMenu}
-            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          <button
+            type="button"
+            onclick={() => (adminMenuOpen = !adminMenuOpen)}
+            aria-expanded={adminMenuOpen}
+            aria-controls="admin-submenu"
+            class="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-ink hover:bg-rule hover:text-accent"
           >
-            Mixtapes
-          </a>
-          <a
-            href="/admin/queue"
-            onclick={closeMenu}
-            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+            <span>Admin</span>
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="transition-transform {adminMenuOpen ? 'rotate-90' : ''}"
+              aria-hidden="true"
+            >
+              <polyline points="3 2 7 5 3 8" />
+            </svg>
+          </button>
+          <div
+            id="admin-submenu"
+            role="group"
+            aria-label="Admin menu"
+            hidden={!adminMenuOpen}
           >
-            Resolve queue
-          </a>
+            <a
+              href="/admin/mixtapes"
+              onclick={closeMenu}
+              class="block py-1.5 pl-6 pr-3 text-sm text-ink hover:bg-rule hover:text-accent"
+            >
+              Mixtapes
+            </a>
+            <a
+              href="/admin/queue"
+              onclick={closeMenu}
+              class="block py-1.5 pl-6 pr-3 text-sm text-ink hover:bg-rule hover:text-accent"
+            >
+              Resolve queue
+            </a>
+          </div>
         {/if}
         <hr class="border-rule" />
         <form method="POST" action="/logout">
