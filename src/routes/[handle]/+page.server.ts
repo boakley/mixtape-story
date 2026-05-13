@@ -1,11 +1,20 @@
 import { error } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { renderStory } from '$lib/server/markdown';
+import { adminClient } from '$lib/server/supabase-admin';
 import type { DisplaySong, ProfileRow, SongRow } from '$lib/types';
 import type { PageServerLoad } from './$types';
 
+const VISITOR_COOKIE = 'mxs_visitor';
+const VISITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
 type SongWithStory = SongRow & { stories: { text: string } | { text: string }[] | null };
 
-export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
+export const load: PageServerLoad = async ({
+  params,
+  cookies,
+  locals: { supabase, safeGetSession }
+}) => {
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, handle, display_name')
@@ -45,9 +54,57 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
     };
   });
 
+  // Visit tracking. The owner's own visits don't count. Authenticated
+  // non-owners dedupe by user.id; anon visitors get a long-lived
+  // httpOnly cookie that dedupes them per mixtape.
+  const { user } = await safeGetSession();
+  const isOwner = user?.id === profile.id;
+
+  if (!isOwner) {
+    let visitorId: string;
+    if (user) {
+      visitorId = `user:${user.id}`;
+    } else {
+      let token = cookies.get(VISITOR_COOKIE);
+      if (!token) {
+        token = crypto.randomUUID();
+        cookies.set(VISITOR_COOKIE, token, {
+          path: '/',
+          maxAge: VISITOR_COOKIE_MAX_AGE,
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: !dev
+        });
+      }
+      visitorId = `anon:${token}`;
+    }
+
+    // RLS denies anon/authenticated writes — go through service-role.
+    await adminClient()
+      .from('mixtape_visits')
+      .upsert(
+        {
+          profile_id: profile.id,
+          visitor_id: visitorId,
+          last_visit_at: new Date().toISOString()
+        },
+        { onConflict: 'profile_id,visitor_id' }
+      );
+  }
+
+  let visitorCount: number | null = null;
+  if (isOwner) {
+    const { count } = await supabase
+      .from('mixtape_visits')
+      .select('*', { count: 'exact', head: true })
+      .eq('profile_id', profile.id);
+    visitorCount = count ?? 0;
+  }
+
   return {
     handle: profile.handle,
     displayName: profile.display_name,
-    songs
+    songs,
+    visitorCount
   };
 };

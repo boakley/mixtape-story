@@ -128,9 +128,17 @@
     </h1>
 
     <div class="mt-2 flex items-center justify-between gap-4">
-      <p class="text-sm text-ink-muted">
-        {data.songs.length} songs{yearRange ? ` · ${yearRange}` : ''}
-      </p>
+      <div>
+        <p class="text-sm text-ink-muted">
+          {data.songs.length} songs{yearRange ? ` · ${yearRange}` : ''}
+        </p>
+        {#if isOwner && data.visitorCount !== null}
+          <p class="mt-0.5 text-xs text-ink-muted">
+            {data.visitorCount}
+            {data.visitorCount === 1 ? 'visitor' : 'visitors'}
+          </p>
+        {/if}
+      </div>
 
       <div class="inline-flex rounded-full border border-rule p-0.5 text-xs">
         <button
