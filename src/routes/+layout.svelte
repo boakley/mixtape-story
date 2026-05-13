@@ -91,11 +91,18 @@
         {/if}
         {#if data.isAdmin}
           <a
+            href="/admin/mixtapes"
+            onclick={closeMenu}
+            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          >
+            Mixtapes
+          </a>
+          <a
             href="/admin/queue"
             onclick={closeMenu}
             class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
           >
-            Admin
+            Resolve queue
           </a>
         {/if}
         <hr class="border-rule" />
