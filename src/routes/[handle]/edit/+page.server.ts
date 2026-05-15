@@ -87,8 +87,6 @@ export const actions: Actions = {
     const title = String(data.get('title') ?? '').trim();
     const artist = String(data.get('artist') ?? '').trim() || null;
     const album = String(data.get('album') ?? '').trim() || null;
-    const memoryYearRaw = String(data.get('memory_year') ?? '').trim();
-    const memoryYear = memoryYearRaw ? Number.parseInt(memoryYearRaw, 10) : null;
 
     if (!title) return fail(400, { error: 'A title is required.' });
 
@@ -101,7 +99,6 @@ export const actions: Actions = {
         title,
         artist,
         album,
-        memory_year: Number.isFinite(memoryYear) ? memoryYear : null,
         link_status: 'manual'
       })
       .select('id')
@@ -446,6 +443,19 @@ export const actions: Actions = {
       });
     }
 
+    // memory_year lives on `songs` but is set alongside the story — it's
+    // a story-shaped piece of data ("what year does this song remind you
+    // of") and users were skipping it when it lived on the metadata form.
+    const memoryYearRaw = String(data.get('memory_year') ?? '').trim();
+    const memoryYear = memoryYearRaw ? Number.parseInt(memoryYearRaw, 10) : null;
+
+    const { error: songErr } = await supabase
+      .from('songs')
+      .update({ memory_year: Number.isFinite(memoryYear) ? memoryYear : null })
+      .eq('id', songId)
+      .eq('owner_id', own.ownerId);
+    if (songErr) return fail(500, { error: songErr.message });
+
     const { error: upsertErr } = await supabase
       .from('stories')
       .upsert({ song_id: songId, text }, { onConflict: 'song_id' });
@@ -463,14 +473,10 @@ export const actions: Actions = {
     const songId = String(data.get('song_id') ?? '');
     if (!songId) return fail(400, { error: 'Missing song_id' });
 
-    const memoryYearRaw = String(data.get('memory_year') ?? '').trim();
-    const memoryYear = memoryYearRaw ? Number.parseInt(memoryYearRaw, 10) : null;
-
     const patch: Record<string, unknown> = {
       title: String(data.get('title') ?? '').trim(),
       artist: String(data.get('artist') ?? '').trim() || null,
-      album: String(data.get('album') ?? '').trim() || null,
-      memory_year: Number.isFinite(memoryYear) ? memoryYear : null
+      album: String(data.get('album') ?? '').trim() || null
     };
 
     if (!patch.title) return fail(400, { error: 'Title is required' });

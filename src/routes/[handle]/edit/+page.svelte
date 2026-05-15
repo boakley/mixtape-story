@@ -592,17 +592,6 @@
                 placeholder="Album (optional)"
                 class="w-full rounded-md border border-rule px-3 py-2 text-sm"
               />
-              <label class="flex items-center gap-2 text-sm text-ink-muted">
-                <span>This song reminds me of the year</span>
-                <input
-                  type="number"
-                  name="memory_year"
-                  min="1900"
-                  max="2100"
-                  placeholder="—"
-                  class="w-20 rounded-md border border-rule px-2 py-1 text-sm text-ink"
-                />
-              </label>
               <div class="flex items-center gap-2">
                 <button
                   type="submit"
@@ -787,18 +776,6 @@
                 placeholder="Album"
                 class="w-full rounded-md border border-rule bg-paper px-3 py-1.5 text-sm"
               />
-              <label class="flex items-center gap-2 text-sm text-ink-muted">
-                <span>This song reminds me of the year</span>
-                <input
-                  type="number"
-                  name="memory_year"
-                  value={song.memory_year ?? ''}
-                  min="1900"
-                  max="2100"
-                  placeholder="—"
-                  class="w-20 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink"
-                />
-              </label>
               <button
                 type="submit"
                 class="rounded-md bg-accent px-3 py-1.5 text-sm text-paper hover:bg-ink"
@@ -818,6 +795,18 @@
               class="space-y-2 border-t border-rule bg-rule/20 px-3 py-3"
             >
               <input type="hidden" name="song_id" value={song.id} />
+              <label class="flex items-center gap-2 text-sm text-ink-muted">
+                <span>This song reminds me of the year</span>
+                <input
+                  type="number"
+                  name="memory_year"
+                  value={song.memory_year ?? ''}
+                  min="1900"
+                  max="2100"
+                  placeholder="—"
+                  class="w-20 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink"
+                />
+              </label>
               <textarea
                 name="text"
                 rows="6"

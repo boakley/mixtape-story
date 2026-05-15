@@ -140,6 +140,11 @@
             ? 'pb-2'
             : ''}"
         >
+          {#if song.memoryYear}
+            <p class="text-sm italic text-ink-muted">
+              This song reminds me of {song.memoryYear}.
+            </p>
+          {/if}
           {@html song.storyHtml}
         </div>
       {/if}
