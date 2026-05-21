@@ -23,9 +23,18 @@ type OdesliResp = {
   pageUrl?: string;
   entityUniqueId?: string;
   entitiesByUniqueId?: Record<string, { title?: string; artistName?: string; thumbnailUrl?: string }>;
+  linksByPlatform?: Record<string, { url?: string }>;
 };
 
-async function odesli(url: string): Promise<{ payload: Record<string, unknown>; songlinkUrl: string } | { rateLimited: true } | { error: string }> {
+type OdesliPayload = {
+  songlinkUrl: string;
+  title: string | null;
+  artist: string | null;
+  albumArtUrl: string | null;
+  linksByPlatform: Record<string, { url: string }>;
+};
+
+async function odesli(url: string): Promise<{ payload: OdesliPayload; songlinkUrl: string; linksByPlatform: Record<string, { url: string }> } | { rateLimited: true } | { error: string }> {
   const endpoint = `${ODESLI_ENDPOINT}?url=${encodeURIComponent(url)}`;
   let res: Response;
   try {
@@ -43,13 +52,22 @@ async function odesli(url: string): Promise<{ payload: Record<string, unknown>; 
       ? data.entitiesByUniqueId[data.entityUniqueId]
       : null;
 
+  // Strip out any links missing a URL; we only care about the deep-link per
+  // platform, not Odesli's per-entity metadata.
+  const linksByPlatform: Record<string, { url: string }> = {};
+  for (const [platform, link] of Object.entries(data.linksByPlatform ?? {})) {
+    if (link?.url) linksByPlatform[platform] = { url: link.url };
+  }
+
   return {
     songlinkUrl: data.pageUrl,
+    linksByPlatform,
     payload: {
       songlinkUrl: data.pageUrl,
       title: entity?.title ?? null,
       artist: entity?.artistName ?? null,
-      albumArtUrl: entity?.thumbnailUrl ?? null
+      albumArtUrl: entity?.thumbnailUrl ?? null,
+      linksByPlatform
     }
   };
 }
@@ -95,12 +113,13 @@ Deno.serve(async (_req: Request) => {
       .maybeSingle();
 
     if (cached) {
-      const payload = cached.payload as { songlinkUrl?: string };
+      const payload = cached.payload as { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> };
       if (payload?.songlinkUrl) {
         await supabase
           .from('songs')
           .update({
             songlink_url: payload.songlinkUrl,
+            links_by_platform: payload.linksByPlatform ?? null,
             link_status: 'done',
             link_last_attempt: new Date().toISOString()
           })
@@ -143,6 +162,7 @@ Deno.serve(async (_req: Request) => {
       .from('songs')
       .update({
         songlink_url: r.songlinkUrl,
+        links_by_platform: r.linksByPlatform,
         link_status: 'done',
         link_last_attempt: new Date().toISOString(),
         link_last_error: null

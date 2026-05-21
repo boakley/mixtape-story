@@ -1,0 +1,21 @@
+-- Per-song direct platform URLs from Odesli. The universal pageUrl is in
+-- `songlink_url`; this column holds the per-service deep links Odesli also
+-- returns. Shape:
+--   {
+--     "spotify":    { "url": "https://open.spotify.com/track/..." },
+--     "appleMusic": { "url": "https://music.apple.com/us/album/...?i=..." },
+--     "youtube":    { "url": "https://www.youtube.com/watch?v=..." },
+--     ...
+--   }
+--
+-- Used by the visitor "Listen with" preference (Phase 2 step 6) to route
+-- the Listen button straight to the visitor's preferred service when
+-- available; falls back to a service-side search URL otherwise (because
+-- not every song has every platform — see PHASE-2 plan, Phase 2.1 section).
+--
+-- NULL means "we haven't resolved this song's per-platform links yet"
+-- (or it's a manual-add with no streaming source). Empty `{}` would mean
+-- "we tried but Odesli returned nothing" — different state, worth keeping
+-- distinguishable.
+
+alter table songs add column links_by_platform jsonb;

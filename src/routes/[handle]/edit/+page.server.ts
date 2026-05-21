@@ -142,7 +142,7 @@ export const actions: Actions = {
       .select('payload')
       .eq('source_url', normalized)
       .maybeSingle();
-    const cachedPayload = (cached?.payload ?? null) as { songlinkUrl?: string } | null;
+    const cachedPayload = (cached?.payload ?? null) as { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> } | null;
 
     const { data: song, error: insertErr } = await supabase
       .from('songs')
@@ -158,6 +158,7 @@ export const actions: Actions = {
         preview_url: track.previewUrl,
         source_url: normalized,
         songlink_url: cachedPayload?.songlinkUrl ?? null,
+        links_by_platform: cachedPayload?.linksByPlatform ?? null,
         link_status: cachedPayload?.songlinkUrl ? 'done' : 'pending'
       })
       .select('id')
@@ -199,7 +200,7 @@ export const actions: Actions = {
       .eq('source_url', normalized)
       .maybeSingle();
 
-    const cachedPayload = (cached?.payload ?? null) as { songlinkUrl?: string } | null;
+    const cachedPayload = (cached?.payload ?? null) as { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> } | null;
 
     const { data: song, error: insertErr } = await supabase
       .from('songs')
@@ -215,6 +216,7 @@ export const actions: Actions = {
         preview_url: track.previewUrl,
         source_url: normalized,
         songlink_url: cachedPayload?.songlinkUrl ?? null,
+        links_by_platform: cachedPayload?.linksByPlatform ?? null,
         link_status: cachedPayload?.songlinkUrl ? 'done' : 'pending'
       })
       .select('id')
@@ -265,14 +267,15 @@ export const actions: Actions = {
     // Cache hits become 'done' immediately; misses go to 'pending'; entries
     // without a source URL at all become 'manual'.
     const sources = tracks.map((t) => t.normalizedSourceUrl).filter((s) => !!s);
-    const cacheMap = new Map<string, { songlinkUrl?: string }>();
+    type CachedPayload = { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> };
+    const cacheMap = new Map<string, CachedPayload>();
     if (sources.length > 0) {
       const { data: cached } = await supabase
         .from('song_cache')
         .select('source_url, payload')
         .in('source_url', sources);
       for (const row of cached ?? []) {
-        const r = row as { source_url: string; payload: { songlinkUrl?: string } };
+        const r = row as { source_url: string; payload: CachedPayload };
         cacheMap.set(r.source_url, r.payload);
       }
     }
@@ -292,6 +295,7 @@ export const actions: Actions = {
         preview_url: t.previewUrl,
         source_url: normalized,
         songlink_url: hit?.songlinkUrl ?? null,
+        links_by_platform: hit?.linksByPlatform ?? null,
         link_status: linkStatus
       };
     });
