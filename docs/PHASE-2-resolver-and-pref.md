@@ -15,7 +15,7 @@ This phase bundles two changes that share an axis:
 
 (2) was already shaping up — the mockup with the text-link "Listen with: Apple · Spotify · YouTube · Other" chip in the header was approved in concept. (1) is what makes (2) actually deliver, because without better ISRC matches a visitor's preferred service will be silently missing on half the old-catalog songs.
 
-The Claude Desktop chat also proposed a third change — Spotify search fallback (search Spotify directly when Odesli's `linksByPlatform.spotify` is missing, inject the result). It's a valid backstop, but it adds a third external API surface and Spotify's Feb 2026 changes have made their developer surface fragile. **Held in reserve.** If Apple-first resolves enough cases that the friction goes quiet, we don't need it. If it doesn't, we add it as Phase 2.1.
+The Claude Desktop chat also proposed a third change — Spotify search fallback (search Spotify directly when Odesli's `linksByPlatform.spotify` is missing, inject the result). Originally held in reserve as Phase 2.1; later abandoned (2026-05-21) when Spotify's Feb 2026 dev-API changes locked Web API access behind a Premium subscription on the developer's account. The replacement is a much simpler service-side **search-URL fallback** that needs no credentials at all — see the Phase 2.1 section at the end of this doc. The same Apple Music swap still helps for songs Odesli can bridge; the search-URL approach catches the rest.
 
 ## Scope
 
@@ -27,7 +27,7 @@ The Claude Desktop chat also proposed a third change — Spotify search fallback
 
 ## Out of scope (deliberately)
 
-- **Spotify Search API fallback.** Reserved for Phase 2.1 if needed.
+- **Spotify Search API fallback.** Reconsidered and dropped 2026-05-21 — Spotify gates Web API access behind Premium on the developer's account. Replaced by service-side search-URL fallback (see Phase 2.1 section).
 - **Country-aware Odesli queries** (`userCountry` from Cloudflare's edge headers). Worth doing eventually for international viewers; not load-bearing for the writing group.
 - **Per-song platform pills** as a UI element. The cookie+fallback covers 95% of the felt need with zero new visual texture per row. Revisit only if users start asking "which services does this song have?" rather than "is Spotify supported?".
 - **Apple Music API for richer metadata** (explicit flags, high-res artwork, accurate release year for OG mosaic). Real but separate; v1.x feature.
@@ -252,11 +252,45 @@ Each step is independently shippable. I'd land them in this order to keep prod s
 
 If any step regresses, the previous step is the rollback line.
 
-## Phase 2.1 (only if needed)
+## Phase 2.1 — service-side search-URL fallback (rolled into Step 6)
 
-If "is Spotify supported?" comes back after Phase 2 ships:
+**Originally drafted as "Spotify Search API fallback."** Abandoned 2026-05-21
+after discovering Spotify's February 2026 dev-API changes now require a
+Premium subscription on the developer's account to access the Web API
+(Bryan saw the message "Your application is blocked from accessing the
+Web API since you do not have a Spotify Premium subscription" after
+creating an app). Even with Premium the trajectory is hostile — they
+flagged that they're "moving away from the Client Credentials flow for
+metadata endpoints," so the rug-pull risk is real.
 
-- Implement Spotify Search API fallback as described in the Claude Desktop chat.
-- Server-side, Client Credentials flow (no user OAuth).
-- Triggered only when post-resolve `linksByPlatform.spotify` is missing.
-- ~3 hours including registration of a Spotify developer app + sanity-check logic.
+**Replacement approach: route to each service's public search page when
+we don't have a direct track link.** No credentials, no API limits, no
+ongoing dependency risk. The flow:
+
+- Visitor sets "Listen with: Spotify" in the chip.
+- For each song, the Listen button's destination is computed:
+  1. If `linksByPlatform.spotify` exists for this song → direct track URL (best).
+  2. If not → `https://open.spotify.com/search/{title}%20{artist}` (good fallback).
+- Same construction works for every service:
+  - Spotify: `https://open.spotify.com/search/{query}`
+  - Apple Music: `https://music.apple.com/search?term={query}`
+  - YouTube Music: `https://music.youtube.com/search?q={query}`
+  - Tidal: `https://tidal.com/browse/search/{query}`
+  - Amazon Music: `https://music.amazon.com/search/{query}`
+
+The cost is one extra click for the visitor when their preferred service
+isn't in our direct-link map — they land on the search results page with
+the song listed and pick the version they want. For a contemplative-
+writing audience that presumably knows the song they're being introduced
+to, that's an acceptable cost. Beats "→ Listen" leading to a dead-end
+Odesli page (which is what we have today for ISRC-orphan songs).
+
+This collapses what was a "Phase 2.1" follow-on into a small helper in
+Step 6 — a single `searchUrlFor(service, song)` function used when the
+direct link is missing. Zero new infrastructure.
+
+The Spotify developer credentials briefly added to Cloudflare and
+.env.local on 2026-05-21 were removed once this approach was chosen.
+If a future change reopens Spotify's free developer surface, the
+direct-search fallback can be added then — but the search-URL approach
+remains the more robust default.
