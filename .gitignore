@@ -14,6 +14,11 @@ build/
 .env.*
 !.env.example
 
+# Apple MusicKit private key (the .p8 file you download once from the
+# developer portal). Never commit — it's a credential.
+*.p8
+AuthKey_*
+
 # Wrangler local dev env file (for `wrangler pages dev`)
 .dev.vars
 
