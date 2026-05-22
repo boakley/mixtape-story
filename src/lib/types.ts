@@ -38,6 +38,8 @@ export type ProfileRow = {
   created_at: string;
 };
 
+export type PlatformLinks = Record<string, { url: string }>;
+
 // Display shape for the /{handle} read path.
 export type DisplaySong = {
   id: string;
@@ -49,6 +51,7 @@ export type DisplaySong = {
   memoryYear: number | null;
   albumArtUrl: string | null;
   songlinkUrl: string | null;
+  linksByPlatform: PlatformLinks | null;
   previewUrl: string | null;
   linkStatus: LinkStatus;
   storyHtml: string;

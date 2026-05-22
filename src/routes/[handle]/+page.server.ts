@@ -2,13 +2,17 @@ import { error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { renderStory } from '$lib/server/markdown';
 import { adminClient } from '$lib/server/supabase-admin';
-import type { DisplaySong, ProfileRow, SongRow } from '$lib/types';
+import { LISTEN_PREF_COOKIE, isListenPref, type ListenPref } from '$lib/listen';
+import type { DisplaySong, PlatformLinks, ProfileRow, SongRow } from '$lib/types';
 import type { PageServerLoad } from './$types';
 
 const VISITOR_COOKIE = 'mxs_visitor';
 const VISITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-type SongWithStory = SongRow & { stories: { text: string } | { text: string }[] | null };
+type SongWithStory = SongRow & {
+  links_by_platform: PlatformLinks | null;
+  stories: { text: string } | { text: string }[] | null;
+};
 
 export const load: PageServerLoad = async ({
   params,
@@ -26,7 +30,7 @@ export const load: PageServerLoad = async ({
   const { data: rows, error: songsErr } = await supabase
     .from('songs')
     .select(
-      'id, position, title, artist, album, release_year, memory_year, album_art_url, songlink_url, preview_url, link_status, stories(text)'
+      'id, position, title, artist, album, release_year, memory_year, album_art_url, songlink_url, links_by_platform, preview_url, link_status, stories(text)'
     )
     .eq('owner_id', profile.id)
     .order('position');
@@ -47,12 +51,16 @@ export const load: PageServerLoad = async ({
       memoryYear: r.memory_year,
       albumArtUrl: r.album_art_url,
       songlinkUrl: r.songlink_url,
+      linksByPlatform: r.links_by_platform,
       previewUrl: r.preview_url,
       linkStatus: r.link_status,
       storyText,
       storyHtml: renderStory(storyText)
     };
   });
+
+  const rawPref = cookies.get(LISTEN_PREF_COOKIE);
+  const viewerPref: ListenPref | null = isListenPref(rawPref) ? rawPref : null;
 
   // Visit tracking. The owner's own visits don't count. Authenticated
   // non-owners dedupe by user.id; anon visitors get a long-lived
@@ -105,6 +113,7 @@ export const load: PageServerLoad = async ({
     handle: profile.handle,
     displayName: profile.display_name,
     songs,
-    visitorCount
+    visitorCount,
+    viewerPref
   };
 };

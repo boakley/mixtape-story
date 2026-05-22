@@ -1,9 +1,10 @@
 <script lang="ts">
   import PreviewButton from './PreviewButton.svelte';
+  import { listenHref, type ListenPref } from '$lib/listen';
   import type { DisplaySong } from '$lib/types';
 
-  type Props = { song: DisplaySong; view: 'expanded' | 'compact' };
-  let { song, view }: Props = $props();
+  type Props = { song: DisplaySong; view: 'expanded' | 'compact'; listenPref: ListenPref | null };
+  let { song, view, listenPref }: Props = $props();
 
   let expandedInCompact = $state(false);
   const expanded = $derived(view === 'expanded' || expandedInCompact);
@@ -21,9 +22,13 @@
     }
   });
 
-  const listenEnabled = $derived(song.linkStatus === 'done' && !!song.songlinkUrl);
-  // While the universal link isn't ready, the 30s preview is the listen surface.
-  const showPreviewInstead = $derived(!listenEnabled && !!song.previewUrl);
+  // Destination depends on the visitor's "Listen with" preference. With a
+  // preference set, this is always non-null (direct link or search-URL
+  // fallback). With no preference, it's the universal Odesli link, which can
+  // be null while the song is still resolving.
+  const listenUrl = $derived(listenHref(song, listenPref));
+  // While there's no Listen URL at all, the 30s preview is the listen surface.
+  const showPreviewInstead = $derived(!listenUrl && !!song.previewUrl);
 </script>
 
 <article
@@ -100,9 +105,9 @@
         </h2>
       {/if}
 
-      {#if listenEnabled}
+      {#if listenUrl}
         <a
-          href={song.songlinkUrl ?? '#'}
+          href={listenUrl}
           target="_blank"
           rel="noopener noreferrer"
           class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"

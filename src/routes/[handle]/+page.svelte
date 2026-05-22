@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import SongRow from '$lib/components/SongRow.svelte';
+  import { LISTEN_PREF_COOKIE, LISTEN_SERVICES, type ListenPref } from '$lib/listen';
   import type { PageData } from './$types';
 
   type Props = { data: PageData };
@@ -9,6 +11,33 @@
   const STORAGE_KEY = 'mixtapestory:view';
 
   let view = $state<View>('compact');
+
+  // Visitor "Listen with" preference. Seeded from the server-read cookie (so
+  // SSR hrefs and the chip's active state match on first paint), then updated
+  // client-side on click — no reload needed, the per-song Listen hrefs
+  // recompute reactively from this. The $effect re-syncs when the server value
+  // changes (e.g. navigating between mixtapes); a local click doesn't change
+  // data.viewerPref so it won't be clobbered.
+  let listenPref = $state<ListenPref | null>(untrack(() => data.viewerPref));
+  $effect(() => {
+    listenPref = data.viewerPref;
+  });
+
+  const listenOptions: Array<{ key: ListenPref | null; label: string }> = [
+    ...(Object.entries(LISTEN_SERVICES) as Array<[ListenPref, { label: string }]>).map(
+      ([key, svc]) => ({ key, label: svc.label })
+    ),
+    { key: null, label: 'Other' }
+  ];
+
+  function setListenPref(key: ListenPref | null) {
+    listenPref = key;
+    if (key) {
+      document.cookie = `${LISTEN_PREF_COOKIE}=${key}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    } else {
+      document.cookie = `${LISTEN_PREF_COOKIE}=; path=/; max-age=0; samesite=lax`;
+    }
+  }
 
   $effect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -164,6 +193,20 @@
       </div>
     </div>
 
+    <p class="mt-3 text-sm text-ink-muted">
+      <span>Listen with:</span>
+      {#each listenOptions as opt, i}
+        {#if i > 0}<span aria-hidden="true"> · </span>{/if}<button
+          type="button"
+          onclick={() => setListenPref(opt.key)}
+          aria-pressed={listenPref === opt.key}
+          class={listenPref === opt.key
+            ? 'text-ink underline decoration-accent decoration-2 underline-offset-4'
+            : 'text-ink-muted hover:text-accent'}
+        >{opt.label}</button>
+      {/each}
+    </p>
+
     <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
       {#if isOwner}
         <a
@@ -187,7 +230,7 @@
     <p class="text-ink-muted">No songs yet.</p>
   {:else}
     {#each data.songs as song (song.id)}
-      <SongRow {song} {view} />
+      <SongRow {song} {view} {listenPref} />
     {/each}
   {/if}
 
