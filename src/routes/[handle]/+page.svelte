@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import SongRow from '$lib/components/SongRow.svelte';
+  import QrDialog from '$lib/components/QrDialog.svelte';
   import {
     LISTEN_PREF_COOKIE,
     LISTEN_SERVICES,
@@ -16,6 +17,9 @@
   const STORAGE_KEY = 'mixtapestory:view';
 
   let view = $state<View>('compact');
+  let qrOpen = $state(false);
+
+  const mixtapeUrl = $derived(`https://mixtapestory.com/${data.handle}`);
 
   // Visitor "Listen with" preference. Seeded from the server-read cookie (so
   // SSR hrefs and the chip's active state match on first paint), then updated
@@ -219,20 +223,76 @@
       {#if isOwner}
         <a
           href="/{data.handle}/edit"
-          class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+          class="inline-flex items-center gap-1.5 text-ink hover:text-accent"
         >
-          Edit mixtape
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
+          <span class="underline decoration-accent decoration-2 underline-offset-4">Edit mixtape</span>
         </a>
       {/if}
       <button
         type="button"
         onclick={handleShare}
-        class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+        class="inline-flex items-center gap-1.5 text-ink hover:text-accent"
       >
-        → Share
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+          <polyline points="16 6 12 2 8 6" />
+          <line x1="12" x2="12" y1="2" y2="15" />
+        </svg>
+        <span class="underline decoration-accent decoration-2 underline-offset-4">Share</span>
+      </button>
+      <button
+        type="button"
+        onclick={() => (qrOpen = true)}
+        class="inline-flex items-center gap-1.5 text-ink hover:text-accent"
+      >
+        <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="1.1">
+            <rect x="1" y="1" width="4" height="4" rx="0.5" />
+            <rect x="9" y="1" width="4" height="4" rx="0.5" />
+            <rect x="1" y="9" width="4" height="4" rx="0.5" />
+          </g>
+          <g fill="currentColor">
+            <rect x="2.4" y="2.4" width="1.2" height="1.2" />
+            <rect x="10.4" y="2.4" width="1.2" height="1.2" />
+            <rect x="2.4" y="10.4" width="1.2" height="1.2" />
+            <rect x="9" y="9" width="1.4" height="1.4" />
+            <rect x="11.6" y="9" width="1.4" height="1.4" />
+            <rect x="9" y="11.6" width="1.4" height="1.4" />
+            <rect x="11.6" y="11.6" width="1.4" height="1.4" />
+          </g>
+        </svg>
+        <span class="underline decoration-accent decoration-2 underline-offset-4">QR code</span>
       </button>
     </div>
   </header>
+
+  {#if qrOpen}
+    <QrDialog url={mixtapeUrl} title="{data.displayName}'s mixtape" onClose={() => (qrOpen = false)} />
+  {/if}
 
   {#if data.songs.length === 0}
     <p class="text-ink-muted">No songs yet.</p>
