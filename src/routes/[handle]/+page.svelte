@@ -314,7 +314,7 @@
         </a>
       </p>
     {/if}
-    <p class="text-xs">mixtapestory.com — in private testing.</p>
+    <p class="text-xs">mixtapestory.com — Share the songs, share the stories.</p>
   </footer>
 </main>
 
