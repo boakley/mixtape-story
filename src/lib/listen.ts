@@ -8,6 +8,8 @@ export const LISTEN_PREF_COOKIE = 'mxs_listen_pref';
 
 type ServiceConfig = {
   label: string;
+  // Tooltip shown on the "Listen with" chip option.
+  tooltip: string;
   // The key Odesli uses in linksByPlatform for this service's direct link.
   platformKey: string;
   // Public search-results URL — works for any visitor with no API/credentials.
@@ -20,20 +22,26 @@ type ServiceConfig = {
 export const LISTEN_SERVICES: Record<ListenPref, ServiceConfig> = {
   apple: {
     label: 'Apple',
+    tooltip: 'Open songs in Apple Music',
     platformKey: 'appleMusic',
     searchUrl: (q) => `https://music.apple.com/us/search?term=${encodeURIComponent(q)}`
   },
   spotify: {
     label: 'Spotify',
+    tooltip: 'Open songs in Spotify',
     platformKey: 'spotify',
     searchUrl: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}`
   },
   youtube: {
     label: 'YouTube',
+    tooltip: 'Open songs in YouTube Music',
     platformKey: 'youtubeMusic',
     searchUrl: (q) => `https://music.youtube.com/search?q=${encodeURIComponent(q)}`
   }
 };
+
+export const OTHER_LISTEN_TOOLTIP =
+  'Open a universal link where you pick your app';
 
 export function isListenPref(value: string | null | undefined): value is ListenPref {
   return value === 'apple' || value === 'spotify' || value === 'youtube';

@@ -1,7 +1,12 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import SongRow from '$lib/components/SongRow.svelte';
-  import { LISTEN_PREF_COOKIE, LISTEN_SERVICES, type ListenPref } from '$lib/listen';
+  import {
+    LISTEN_PREF_COOKIE,
+    LISTEN_SERVICES,
+    OTHER_LISTEN_TOOLTIP,
+    type ListenPref
+  } from '$lib/listen';
   import type { PageData } from './$types';
 
   type Props = { data: PageData };
@@ -23,11 +28,11 @@
     listenPref = data.viewerPref;
   });
 
-  const listenOptions: Array<{ key: ListenPref | null; label: string }> = [
-    ...(Object.entries(LISTEN_SERVICES) as Array<[ListenPref, { label: string }]>).map(
-      ([key, svc]) => ({ key, label: svc.label })
+  const listenOptions: Array<{ key: ListenPref | null; label: string; tooltip: string }> = [
+    ...(Object.entries(LISTEN_SERVICES) as Array<[ListenPref, { label: string; tooltip: string }]>).map(
+      ([key, svc]) => ({ key, label: svc.label, tooltip: svc.tooltip })
     ),
-    { key: null, label: 'Other' }
+    { key: null, label: 'Other', tooltip: OTHER_LISTEN_TOOLTIP }
   ];
 
   function setListenPref(key: ListenPref | null) {
@@ -194,17 +199,20 @@
     </div>
 
     <p class="mt-3 text-sm text-ink-muted">
-      <span>Listen with:</span>
-      {#each listenOptions as opt, i}
-        {#if i > 0}<span aria-hidden="true"> · </span>{/if}<button
-          type="button"
-          onclick={() => setListenPref(opt.key)}
-          aria-pressed={listenPref === opt.key}
-          class={listenPref === opt.key
-            ? 'text-ink underline decoration-accent decoration-2 underline-offset-4'
-            : 'text-ink-muted hover:text-accent'}
-        >{opt.label}</button>
-      {/each}
+      <span id="listen-with-label" class="mr-1">Listen with:</span><span
+        role="group"
+        aria-labelledby="listen-with-label"
+      >{#each listenOptions as opt, i}{#if i > 0}<span
+            aria-hidden="true"
+            class="mx-2 align-middle text-base text-ink-muted">·</span>{/if}<button
+            type="button"
+            onclick={() => setListenPref(opt.key)}
+            aria-pressed={listenPref === opt.key}
+            title={opt.tooltip}
+            class={listenPref === opt.key
+              ? 'text-ink underline decoration-accent decoration-2 underline-offset-4'
+              : 'text-ink-muted hover:text-accent'}
+          >{opt.label}</button>{/each}</span>
     </p>
 
     <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
