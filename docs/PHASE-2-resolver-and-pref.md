@@ -1,6 +1,29 @@
 # Phase 2 — Apple Music resolver + per-visitor "Listen with" preference
 
-**Status:** Plan only. No code yet. Captured 2026-05-18 after a writing-group user asked "is Spotify supported?" on "A Horse With No Name" — the friction PHASE-1B's deferred Apple Music swap was waiting for.
+**Status: SHIPPED 2026-05-21.** Captured 2026-05-18 after a writing-group user asked "is Spotify supported?" on "A Horse With No Name"; built and deployed the same week. The plan below is preserved as written; this header records what actually shipped and where it diverged.
+
+## What shipped (and how reality diverged from the plan)
+
+All in prod as of 2026-05-21:
+
+1. **Apple Music API replaced iTunes Search** as the resolver source (`src/lib/server/music/apple-music.ts`, ES256 JWT via Web Crypto). Single swap point in `itunes-cache.ts`. Verified in workerd; `itunes_cache` flushed after.
+2. **`songs.links_by_platform` (jsonb)** added (migration `0013`) and populated on every resolve — queue worker + the three inline editor paths. All 155 existing songs backfilled via a one-shot Edge Function.
+3. **Visitor "Listen with" chip** (`src/lib/listen.ts` + the `/{handle}` page): cookie-backed preference, per-song href routing, tooltips, grouped a11y semantics.
+
+**The big divergence — Spotify direct links turned out to be impossible, two ways:**
+
+- **Spotify's own API is gated behind a Premium dev subscription** (Feb 2026 change). Killed the planned "Phase 2.1 Spotify search API fallback" before it started. See [[reference_spotify_api_blocked]].
+- **Odesli itself returns zero Spotify and zero YouTube links** for *any* song right now (confirmed across all 155 backfilled songs + direct API tests). Almost certainly the same Spotify lockdown cascading into Odesli's pipeline. So `links_by_platform` is effectively Apple Music (100%) + Tidal/Amazon/Deezer/Pandora where present; Spotify and YouTube are *never* direct.
+
+**The resolution:** the search-URL fallback (originally a minor edge-case helper) became the load-bearing path for Spotify and YouTube. The chip routes Apple → direct deep link, Spotify/YouTube → the service's public search URL (`open.spotify.com/search/...`), Other → the universal Odesli page. The original user complaint is answered: a Spotify-preferring visitor taps Listen and lands on Spotify with the song every time, despite no direct-link source existing anywhere.
+
+**The optional second-pass backfill (re-resolving old iTunes-anchored songs through Apple Music) was skipped** — since Odesli surfaces no Spotify for anything, re-resolving wouldn't change the Spotify picture, and the first-pass backfill already captured what Odesli does know per song.
+
+The `backfill-links` Edge Function was a one-shot; deleted from Supabase and the repo after the 155-song backfill completed. Recoverable from git history at commit `ca90914` if ever needed again.
+
+---
+
+**(Original plan as written 2026-05-18 follows.)**
 
 ## Why now
 
