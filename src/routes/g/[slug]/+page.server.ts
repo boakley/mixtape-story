@@ -64,12 +64,19 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
     isSteward = membership?.role === 'steward';
 
     if (isMember) {
+      // Fetch the user's mixtapes plus song counts so the UI can tell
+      // "you have a group mixtape with songs" (hide the Copy button)
+      // from "you have an empty group placeholder" (still offer Copy
+      // so the user can fill it from their personal mixtape).
       const { data: existing } = await admin
         .from('mixtapes')
-        .select('id, group_id')
+        .select('id, group_id, songs:songs(id)')
         .eq('profile_id', user.id);
-      viewerHasGroupMixtape = (existing ?? []).some((m) => m.group_id === group.id);
-      viewerHasPersonalMixtape = (existing ?? []).some((m) => m.group_id === null);
+      const rows = (existing ?? []) as { id: string; group_id: string | null; songs: { id: string }[] }[];
+      viewerHasGroupMixtape = rows.some(
+        (m) => m.group_id === group.id && (m.songs?.length ?? 0) > 0
+      );
+      viewerHasPersonalMixtape = rows.some((m) => m.group_id === null);
     }
   }
 
@@ -188,17 +195,22 @@ export const actions: Actions = {
       .maybeSingle();
     if (!membership) return fail(403, { error: 'Join this group first.' });
 
-    // Idempotent: if the user already has a mixtape in this group, do
-    // nothing. The partial unique index would catch a duplicate, but
-    // an early return surfaces a friendlier UI state than a constraint
-    // error.
+    // Three states for the existing group mixtape:
+    //   - none → create + populate
+    //   - exists but empty → use existing id as target, populate it
+    //     (so a user who clicked Copy with an empty personal can re-fill
+    //     once they've actually added songs)
+    //   - exists with songs → bail (copy is a snapshot, not a sync; if
+    //     the user wants to overwrite they have to start by deleting it)
     const { data: existingGroupMixtape } = await admin
       .from('mixtapes')
-      .select('id')
+      .select('id, songs:songs(id)')
       .eq('profile_id', user.id)
       .eq('group_id', group.id)
       .maybeSingle();
-    if (existingGroupMixtape) return { ok: true };
+    const existingSongCount =
+      ((existingGroupMixtape?.songs as unknown as { id: string }[] | null) ?? []).length;
+    if (existingGroupMixtape && existingSongCount > 0) return { ok: true };
 
     // Pull the source mixtape (personal scope) along with its songs.
     // Stories come in a second query keyed by song_id to keep this
@@ -218,13 +230,19 @@ export const actions: Actions = {
       .is('group_id', null)
       .maybeSingle();
 
-    const { data: newMixtape, error: mixtapeError } = await admin
-      .from('mixtapes')
-      .insert({ profile_id: user.id, group_id: group.id, visibility: 'group' })
-      .select('id')
-      .single();
-    if (mixtapeError || !newMixtape) {
-      return fail(500, { error: 'Could not create the group mixtape.' });
+    let targetMixtapeId: string;
+    if (existingGroupMixtape) {
+      targetMixtapeId = existingGroupMixtape.id as string;
+    } else {
+      const { data: newMixtape, error: mixtapeError } = await admin
+        .from('mixtapes')
+        .insert({ profile_id: user.id, group_id: group.id, visibility: 'group' })
+        .select('id')
+        .single();
+      if (mixtapeError || !newMixtape) {
+        return fail(500, { error: 'Could not create the group mixtape.' });
+      }
+      targetMixtapeId = newMixtape.id as string;
     }
 
     type SourceSong = {
@@ -262,7 +280,7 @@ export const actions: Actions = {
       return {
         id: newId,
         owner_id: user.id,
-        mixtape_id: newMixtape.id,
+        mixtape_id: targetMixtapeId,
         position: s.position,
         title: s.title,
         artist: s.artist,
@@ -285,8 +303,11 @@ export const actions: Actions = {
 
     const { error: songsError } = await admin.from('songs').insert(newSongRows);
     if (songsError) {
-      // Roll back the orphan mixtape so the user can retry cleanly.
-      await admin.from('mixtapes').delete().eq('id', newMixtape.id);
+      // If we just created the target mixtape (rather than refilling an
+      // existing empty one), roll it back so the user can retry cleanly.
+      if (!existingGroupMixtape) {
+        await admin.from('mixtapes').delete().eq('id', targetMixtapeId);
+      }
       return fail(500, { error: 'Could not copy your songs.' });
     }
 
