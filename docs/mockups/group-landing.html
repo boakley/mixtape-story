@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Group landing — Phase 3 mockup</title>
+  <style>
+    :root {
+      /* Live design tokens — kept in sync with src/app.css */
+      --paper: #fdfcf8;
+      --ink: #1a1816;
+      --ink-muted: #6b6660;
+      --rule: #e8e3da;
+      --accent: #b04a2f;
+
+      --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      --font-serif: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #ece4d3;
+      color: var(--ink);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 56px 24px 80px;
+    }
+
+    .container { max-width: 1320px; margin: 0 auto; }
+
+    /* Page heading (this mockup's chrome, not the product) */
+    header.page-head {
+      max-width: 720px;
+      margin: 0 auto 48px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    h1.page-title {
+      font-size: clamp(1.75rem, 3vw, 2.25rem);
+      line-height: 1.1;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+    }
+
+    .lede {
+      font-size: 15px;
+      color: var(--ink-muted);
+      max-width: 56ch;
+      margin: 0 auto;
+    }
+
+    /* Three device frames side by side */
+    .frames {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .frame { width: 390px; max-width: 100%; }
+
+    .frame-label {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 14px;
+    }
+
+    .frame-label strong { color: var(--ink); font-weight: 600; }
+
+    .device {
+      background: var(--paper);
+      border-radius: 28px;
+      box-shadow:
+        0 4px 24px rgba(26, 24, 22, 0.08),
+        0 1px 3px rgba(26, 24, 22, 0.06);
+      padding: 36px 22px 28px;
+      min-height: 720px;
+    }
+
+    /* ---- Page content inside the device ---- */
+
+    .page { font-size: 14px; color: var(--ink); }
+
+    .brand {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+    }
+
+    .group-title {
+      font-size: 26px;
+      line-height: 1.15;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      margin-bottom: 8px;
+    }
+
+    /* Description is editable by stewards — the small pencil at the end is the
+       affordance. It's hidden for non-steward members. The hover state is shown
+       on the desktop frames as documentation of the design. */
+    .group-desc {
+      font-size: 14px;
+      color: var(--ink-muted);
+      margin-bottom: 6px;
+    }
+
+    .edit-pencil {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: -2px;
+      margin-left: 4px;
+      padding: 2px;
+      color: var(--ink-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+
+    .edit-pencil:hover { color: var(--accent); opacity: 1; }
+
+    .group-meta {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-bottom: 20px;
+    }
+
+    /* Tab strip — three tabs fit with comfortable gaps at desktop width */
+    .tabs {
+      display: flex;
+      gap: 18px;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 18px;
+    }
+
+    .tab {
+      font-size: 13px;
+      color: var(--ink-muted);
+      padding: 8px 0 10px;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      color: var(--ink);
+      border-bottom-color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ---- Member mixtapes tab — compact: no separator, tight padding ---- */
+
+    .member-card {
+      padding: 8px 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .member-card:first-of-type { padding-top: 4px; }
+
+    .member-name {
+      font-size: 16px;
+      color: var(--ink);
+      line-height: 1.25;
+    }
+
+    .member-meta {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 1px;
+    }
+
+    .member-updated {
+      font-size: 12px;
+      color: var(--ink-muted);
+      white-space: nowrap;
+    }
+
+    /* ---- Songs (Songs we share + All songs) — rail + dots, no year ---- */
+
+    .shared-intro {
+      font-size: 13px;
+      color: var(--ink-muted);
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    .song {
+      display: grid;
+      grid-template-columns: 0.875rem minmax(0, 1fr);
+      gap: 12px;
+      padding: 20px 0 24px;
+    }
+
+    .song .rail { position: relative; }
+
+    .song .rail::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: -10px;
+      bottom: -12px;
+      width: 1px;
+      background: var(--rule);
+      transform: translateX(-50%);
+    }
+
+    .song:last-of-type .rail::before { bottom: 50%; }
+    .song:first-of-type .rail::before { top: 50%; }
+
+    .song .rail::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 5px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      transform: translateX(-50%);
+      box-shadow: 0 0 0 3px var(--paper);
+    }
+
+    .song .body { min-width: 0; }
+
+    .song .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .song .title {
+      font-size: 17px;
+      color: var(--ink);
+      line-height: 1.25;
+      font-weight: 400;
+    }
+
+    .listen {
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--ink);
+      text-decoration: underline;
+      text-decoration-color: var(--accent);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+    }
+
+    .song .artist {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
+
+    .stories {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .story {
+      font-size: 14px;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    .story .attrib {
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-style: italic;
+      margin-bottom: 4px;
+    }
+
+    .story .attrib a {
+      color: var(--ink-muted);
+      text-decoration: underline;
+      text-decoration-color: var(--rule);
+      text-underline-offset: 2px;
+    }
+
+    .more-link {
+      display: inline;
+      margin-left: 4px;
+      font-size: 13px;
+      color: var(--ink-muted);
+      text-decoration: underline;
+      text-decoration-color: var(--rule);
+      text-underline-offset: 3px;
+      cursor: pointer;
+    }
+
+    .more-link:hover { color: var(--accent); }
+
+    /* ---- Shared bits ---- */
+
+    .cta-row {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rule);
+      font-size: 14px;
+    }
+
+    .cta-row a {
+      color: var(--ink);
+      text-decoration: underline;
+      text-decoration-color: var(--accent);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+    }
+
+    .footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rule);
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
+
+    /* ---- iPhone section ---- */
+
+    .iphone-section {
+      margin: 96px auto 0;
+      max-width: 720px;
+      text-align: center;
+    }
+
+    .iphone-section h2.section-title {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .iphone-section h3 {
+      font-size: clamp(1.5rem, 2.5vw, 1.85rem);
+      line-height: 1.15;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      margin-bottom: 14px;
+    }
+
+    .iphone-section p.lede {
+      margin-bottom: 48px;
+    }
+
+    .iphone-row { display: flex; justify-content: center; }
+
+    .iphone {
+      width: 393px;
+      padding: 11px;
+      background: #1a1816;
+      border-radius: 56px;
+      box-shadow:
+        0 30px 60px rgba(26, 24, 22, 0.22),
+        0 4px 12px rgba(26, 24, 22, 0.12),
+        inset 0 0 0 2px #2c2a26;
+      position: relative;
+    }
+
+    .iphone-screen {
+      background: var(--paper);
+      border-radius: 46px;
+      overflow: hidden;
+      position: relative;
+      height: 800px;
+    }
+
+    .dynamic-island {
+      position: absolute;
+      top: 11px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 118px;
+      height: 36px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 3;
+    }
+
+    .status-bar {
+      height: 54px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 30px 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      position: relative;
+      z-index: 2;
+    }
+
+    .status-time { letter-spacing: -0.01em; }
+
+    .status-icons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .status-icons svg { display: block; }
+
+    .home-indicator {
+      position: absolute;
+      bottom: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 134px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--ink);
+      opacity: 0.5;
+      z-index: 2;
+    }
+
+    .iphone-page {
+      padding: 4px 20px 56px;
+      height: calc(800px - 54px);
+      overflow: hidden;
+    }
+
+    .iphone-page .tabs { gap: 14px; }
+
+    /* ---- Notes section below ---- */
+
+    .notes {
+      margin: 88px auto 0;
+      max-width: 720px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink-muted);
+    }
+
+    .notes h2 {
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 32px 0 12px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .notes ul { list-style: disc; padding-left: 1.4em; }
+    .notes li { margin-bottom: 6px; }
+    .notes strong { color: var(--ink); font-weight: 600; }
+    .notes code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      background: rgba(176, 74, 47, 0.08);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--ink);
+    }
+
+    @media (max-width: 1280px) {
+      .frames { gap: 32px; }
+    }
+    @media (max-width: 880px) {
+      .frames { flex-direction: column; align-items: center; gap: 56px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="page-head">
+      <p class="eyebrow">Phase 3 mockup · updated 2026-06-05</p>
+      <h1 class="page-title">Group landing — Writing Meditation</h1>
+      <p class="lede">
+        The <code>/g/writing-meditation</code> page in its three tab states. Member mixtapes
+        is the default; Songs we share is the social-moment highlight; All songs is the
+        full corpus. Description is editable by stewards (pencil shown). Timeline removed
+        from the song views (matches the personal page change).
+      </p>
+    </header>
+
+    <div class="frames">
+
+      <!-- =========================================== -->
+      <!-- Tab 1 — Member mixtapes (default)           -->
+      <!-- =========================================== -->
+      <div class="frame">
+        <p class="frame-label"><strong>Tab 1 — Member mixtapes</strong> &nbsp;·&nbsp; default</p>
+        <div class="device">
+          <div class="page">
+
+            <p class="brand">mixtapestory.com</p>
+            <h1 class="group-title">Writing Meditation</h1>
+            <p class="group-desc">A small group sharing songs and the stories that explain them.<button class="edit-pencil" aria-label="Edit description (stewards only)" title="Edit description"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button></p>
+            <p class="group-meta">12 members · 9 mixtapes</p>
+
+            <nav class="tabs" aria-label="Group view">
+              <span class="tab active" aria-current="page">Member mixtapes</span>
+              <span class="tab">Songs we share</span>
+              <span class="tab">All songs</span>
+            </nav>
+
+            <div class="members">
+              <div class="member-card">
+                <div>
+                  <div class="member-name">Sam's mixtape</div>
+                  <div class="member-meta">14 songs</div>
+                </div>
+                <div class="member-updated">3d ago</div>
+              </div>
+
+              <div class="member-card">
+                <div>
+                  <div class="member-name">Margaret's mixtape</div>
+                  <div class="member-meta">8 songs</div>
+                </div>
+                <div class="member-updated">1w ago</div>
+              </div>
+
+              <div class="member-card">
+                <div>
+                  <div class="member-name">Tim's mixtape</div>
+                  <div class="member-meta">22 songs</div>
+                </div>
+                <div class="member-updated">2w ago</div>
+              </div>
+
+              <div class="member-card">
+                <div>
+                  <div class="member-name">Andy's mixtape</div>
+                  <div class="member-meta">11 songs</div>
+                </div>
+                <div class="member-updated">3w ago</div>
+              </div>
+
+              <div class="member-card">
+                <div>
+                  <div class="member-name">Jess's mixtape</div>
+                  <div class="member-meta">6 songs</div>
+                </div>
+                <div class="member-updated">1mo ago</div>
+              </div>
+
+              <div class="member-card">
+                <div>
+                  <div class="member-name">Bryan's mixtape</div>
+                  <div class="member-meta">17 songs</div>
+                </div>
+                <div class="member-updated">2mo ago</div>
+              </div>
+            </div>
+
+            <div class="cta-row">
+              <a href="#">→ Add your mixtape</a>
+            </div>
+
+            <div class="footer">
+              mixtapestory.com — Share the songs, share the stories.
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- =========================================== -->
+      <!-- Tab 2 — Songs we share                      -->
+      <!-- =========================================== -->
+      <div class="frame">
+        <p class="frame-label"><strong>Tab 2 — Songs we share</strong></p>
+        <div class="device">
+          <div class="page">
+
+            <p class="brand">mixtapestory.com</p>
+            <h1 class="group-title">Writing Meditation</h1>
+            <p class="group-desc">A small group sharing songs and the stories that explain them.<button class="edit-pencil" aria-label="Edit description (stewards only)" title="Edit description"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button></p>
+            <p class="group-meta">12 members · 47 unique songs</p>
+
+            <nav class="tabs" aria-label="Group view">
+              <span class="tab">Member mixtapes</span>
+              <span class="tab active" aria-current="page">Songs we share</span>
+              <span class="tab">All songs</span>
+            </nav>
+
+            <p class="shared-intro">Three songs picked by two or more of you.</p>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Imagine</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">John Lennon</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Sam</a></div>
+                  A song my mother put on every Sunday morning when I was small. I still hear the album turning when I close my eyes.<a class="more-link" href="#">[more]</a>
+                </div>
+                <div class="story">
+                  <div class="attrib">from <a href="#">Tim</a></div>
+                  The first piano piece I learned by ear, age twelve. My teacher was furious that I hadn't read the score.<a class="more-link" href="#">[more]</a>
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Big Yellow Taxi</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">Joni Mitchell</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Margaret</a></div>
+                  Vermont down to Florida — my sister and I, this on every burned CD she made for the trip.
+                </div>
+                <div class="story">
+                  <div class="attrib">from <a href="#">Andy</a></div>
+                  My sister sang it to her newborn last spring. He'd only sleep if she was singing.
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Such Great Heights</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">The Postal Service</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Jess</a></div>
+                  The summer I had nothing figured out and walked everywhere.
+                </div>
+                <div class="story">
+                  <div class="attrib">from <a href="#">Bryan</a></div>
+                  We played this at our wedding. I was certain my future self would think it an embarrassing choice.<a class="more-link" href="#">[more]</a>
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <div class="footer">
+              mixtapestory.com — Share the songs, share the stories.
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- =========================================== -->
+      <!-- Tab 3 — All songs                           -->
+      <!-- =========================================== -->
+      <div class="frame">
+        <p class="frame-label"><strong>Tab 3 — All songs</strong></p>
+        <div class="device">
+          <div class="page">
+
+            <p class="brand">mixtapestory.com</p>
+            <h1 class="group-title">Writing Meditation</h1>
+            <p class="group-desc">A small group sharing songs and the stories that explain them.<button class="edit-pencil" aria-label="Edit description (stewards only)" title="Edit description"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button></p>
+            <p class="group-meta">12 members · 47 unique songs</p>
+
+            <nav class="tabs" aria-label="Group view">
+              <span class="tab">Member mixtapes</span>
+              <span class="tab">Songs we share</span>
+              <span class="tab active" aria-current="page">All songs</span>
+            </nav>
+
+            <p class="shared-intro">Every song picked by the group · newest first.</p>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Such Great Heights</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">The Postal Service</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Jess</a></div>
+                  The summer I had nothing figured out and walked everywhere.
+                </div>
+                <div class="story">
+                  <div class="attrib">from <a href="#">Bryan</a></div>
+                  We played this at our wedding.<a class="more-link" href="#">[more]</a>
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Tangled Up in Blue</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">Bob Dylan</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Margaret</a></div>
+                  My father had this on cassette in the truck. I never knew the words; I knew the cadence.<a class="more-link" href="#">[more]</a>
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Big Yellow Taxi</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">Joni Mitchell</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Margaret</a></div>
+                  Vermont down to Florida — my sister and I, this on every burned CD.
+                </div>
+                <div class="story">
+                  <div class="attrib">from <a href="#">Andy</a></div>
+                  My sister sang it to her newborn last spring.
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Glory Box</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">Portishead</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Jess</a></div>
+                  I was sixteen and convinced I'd discovered something nobody else knew.
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Sweet Dreams (Are Made of This)</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">Eurythmics</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Sam</a></div>
+                  Eighth-grade dance. My friend Lori knew all the moves; I knew none of them.
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <article class="song">
+              <div class="rail"></div>
+              <div class="body">
+              <div class="title-row">
+                <div class="title">Imagine</div>
+                <a class="listen" href="#">→ Listen</a>
+              </div>
+              <div class="artist">John Lennon</div>
+              <div class="stories">
+                <div class="story">
+                  <div class="attrib">from <a href="#">Sam</a></div>
+                  A song my mother put on every Sunday morning when I was small.<a class="more-link" href="#">[more]</a>
+                </div>
+                <div class="story">
+                  <div class="attrib">from <a href="#">Tim</a></div>
+                  The first piano piece I learned by ear.
+                </div>
+              </div>
+              </div>
+            </article>
+
+            <p class="shared-intro" style="text-align:center; margin-top: 16px;">Showing 6 of 47 · scroll for more</p>
+
+            <div class="footer">
+              mixtapestory.com — Share the songs, share the stories.
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- =========================================== -->
+    <!-- iPhone-scale mockup                         -->
+    <!-- =========================================== -->
+    <section class="iphone-section">
+      <h2 class="section-title">On a real iPhone</h2>
+      <h3>The three-tab strip at narrow widths</h3>
+      <p class="lede">
+        Rendered at iPhone 14 width (393px). Tab gap drops from 18px to 14px to fit the
+        three full labels; result is snug but readable. iPhone SE (375px) is the actual
+        stress test — see notes for label alternatives.
+      </p>
+
+      <div class="iphone-row">
+        <div class="iphone">
+          <div class="dynamic-island"></div>
+          <div class="iphone-screen">
+            <div class="status-bar">
+              <span class="status-time">9:41</span>
+              <span class="status-icons">
+                <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor" aria-hidden="true">
+                  <rect x="0" y="7" width="3" height="4" rx="0.5"/>
+                  <rect x="4" y="5" width="3" height="6" rx="0.5"/>
+                  <rect x="8" y="3" width="3" height="8" rx="0.5"/>
+                  <rect x="12" y="0" width="3" height="11" rx="0.5"/>
+                </svg>
+                <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor" aria-hidden="true">
+                  <path d="M7.5 0C4.6 0 1.9 1.2 0 3l1.5 1.5C3.1 3 5.2 2 7.5 2s4.4 1 6 2.5L15 3C13.1 1.2 10.4 0 7.5 0zm0 3.5C5.5 3.5 3.6 4.3 2.2 5.7L3.7 7.2c1-1 2.3-1.7 3.8-1.7s2.8.7 3.8 1.7l1.5-1.5C11.4 4.3 9.5 3.5 7.5 3.5zm0 3.5c-1.1 0-2.1.4-2.8 1.2L7.5 11l2.8-2.8C9.6 7.4 8.6 7 7.5 7z"/>
+                </svg>
+                <svg width="26" height="12" viewBox="0 0 26 12" fill="none" aria-hidden="true">
+                  <rect x="0.5" y="0.5" width="22" height="11" rx="2.5" stroke="currentColor" opacity="0.4"/>
+                  <rect x="2" y="2" width="19" height="8" rx="1.5" fill="currentColor"/>
+                  <rect x="24" y="4" width="2" height="4" rx="1" fill="currentColor" opacity="0.4"/>
+                </svg>
+              </span>
+            </div>
+
+            <div class="iphone-page">
+              <div class="page">
+
+                <p class="brand">mixtapestory.com</p>
+                <h1 class="group-title">Writing Meditation</h1>
+                <p class="group-desc">A small group sharing songs and the stories that explain them.<button class="edit-pencil" aria-label="Edit description (stewards only)" title="Edit description"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button></p>
+                <p class="group-meta">12 members · 47 unique songs</p>
+
+                <nav class="tabs" aria-label="Group view">
+                  <span class="tab">Member mixtapes</span>
+                  <span class="tab active" aria-current="page">Songs we share</span>
+                  <span class="tab">All songs</span>
+                </nav>
+
+                <p class="shared-intro">Three songs picked by two or more of you.</p>
+
+                <article class="song">
+                  <div class="rail"></div>
+                  <div class="body">
+                  <div class="title-row">
+                    <div class="title">Imagine</div>
+                    <a class="listen" href="#">→ Listen</a>
+                  </div>
+                  <div class="artist">John Lennon</div>
+                  <div class="stories">
+                    <div class="story">
+                      <div class="attrib">from <a href="#">Sam</a></div>
+                      A song my mother put on every Sunday morning when I was small. I still hear the album turning when I close my eyes.<a class="more-link" href="#">[more]</a>
+                    </div>
+                    <div class="story">
+                      <div class="attrib">from <a href="#">Tim</a></div>
+                      The first piano piece I learned by ear, age twelve.
+                    </div>
+                  </div>
+                  </div>
+            </article>
+
+                <article class="song">
+                  <div class="rail"></div>
+                  <div class="body">
+                  <div class="title-row">
+                    <div class="title">Big Yellow Taxi</div>
+                    <a class="listen" href="#">→ Listen</a>
+                  </div>
+                  <div class="artist">Joni Mitchell</div>
+                  <div class="stories">
+                    <div class="story">
+                      <div class="attrib">from <a href="#">Margaret</a></div>
+                      Vermont down to Florida — my sister and I, this on every burned CD.
+                    </div>
+                  </div>
+                  </div>
+            </article>
+
+              </div>
+            </div>
+
+            <div class="home-indicator"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Notes -->
+    <section class="notes">
+
+      <h2>What changed since the last revision</h2>
+      <ul>
+        <li><strong>Timeline removed.</strong> No more year column or dot/rail on song views — flat list, with year-on-the-rail dropped from the sort key. The personal mixtape page change is already live in <code>SongRow.svelte</code>.</li>
+        <li><strong>Member cards compacted.</strong> Separators between cards gone; vertical padding dropped from 14px to 8px. Year range removed from the meta line (no longer relevant without the year-as-structure framing) — just song count.</li>
+        <li><strong>Story truncation on song views.</strong> Songs we share + All songs now show the first 2 sentences of each story with an inline <code>[more]</code> link. The personal mixtape view at <code>/{handle}</code> still shows full stories.</li>
+        <li><strong>All songs sort.</strong> Newest added first (was: oldest by year). Matches the writing-group's "what's new since I last looked" reading pattern.</li>
+        <li><strong>Steward edit affordance.</strong> Small pencil at the end of the description, visible only to stewards. Clicking opens an inline edit (same pattern as the existing Edit mixtape link).</li>
+      </ul>
+
+      <h2>Story truncation rules</h2>
+      <ul>
+        <li><strong>Default cap.</strong> First 2 sentences of the source <code>Story.text</code>. Sentence boundary = <code>[.!?]</code> followed by whitespace or end-of-string. If the first 2 sentences exceed ~280 characters, truncate at ~280 with ellipsis instead.</li>
+        <li><strong>[more] behavior.</strong> Inline expand (no navigation away). Toggles to <code>[less]</code> when expanded. Re-uses the same expand affordance the personal mixtape page already has for compact-view stories.</li>
+        <li><strong>When stories are shorter than the cap.</strong> No <code>[more]</code> shown; the full story renders inline.</li>
+        <li><strong>Plain text, not HTML.</strong> Truncation operates on <code>Story.text</code> before markdown rendering — avoids splitting in the middle of a tag. The shortened text is then re-rendered.</li>
+        <li><strong>Out of scope.</strong> Per-story-style customization; "Show all" bulk expand; remembering which stories you've already expanded across sessions.</li>
+      </ul>
+
+      <h2>Songs-we-share / All-songs rules (updated)</h2>
+      <ul>
+        <li><strong>Definition.</strong> Songs we share = songs with ≥2 distinct member contributors. All songs = everything, including the shared subset.</li>
+        <li><strong>Dedup key.</strong> ISRC when both rows have it; normalized title + artist as fallback.</li>
+        <li><strong>Sort across songs.</strong> Newest added first (most recent <code>Story.created_at</code> across contributors, for each song). Replaces the previous "year-on-the-rail ascending" rule.</li>
+        <li><strong>Story order under a song.</strong> Earliest <code>Story.created_at</code> first — preserves the thread feel.</li>
+        <li><strong>memory_year still rendered inside stories</strong> as "This song reminds me of {year}." lead-in when present. Just no longer a structural sort key.</li>
+      </ul>
+
+      <h2>Steward controls — where they live</h2>
+      <ul>
+        <li><strong>Description edit:</strong> small pencil at end of <code>.group-desc</code>, visible only when <code>viewer.role === 'steward'</code>. Inline edit pattern.</li>
+        <li><strong>Other steward affordances</strong> (manage invite codes, member roster, delete group) live on a separate <code>/g/{slug}/manage</code> page accessed via a "Manage group" link in the hamburger menu when the viewer is a steward.</li>
+        <li><strong>Non-stewards see nothing</strong> — no pencil, no Manage link. The role-conditional rendering happens server-side and is enforced by RLS underneath.</li>
+      </ul>
+
+      <h2>Still open</h2>
+      <ul>
+        <li>Tab persistence in <code>localStorage</code> like the expand/compact view on the mixtape page.</li>
+        <li>Whether the per-tab meta line ("9 mixtapes" / "47 unique songs") helps or just adds chrome. Could collapse to one consistent line ("12 members" only).</li>
+        <li>Should the "Songs we share" tab disappear when the group has zero shared songs, or stay with the empty state? Current lean: stay — the empty itself is a nudge.</li>
+        <li>Touch-target heights — tabs are currently ~33px tall; iOS-HIG suggests 44pt minimum. Worth a bump in the live build.</li>
+        <li>Does the steward pencil need a hover label ("Edit description") for discoverability, or is the inline placement enough? Hover-only on desktop is fine; on touch, a tap shows an inline editor without needing a label.</li>
+      </ul>
+
+    </section>
+
+  </div>
+</body>
+</html>
