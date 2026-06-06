@@ -89,6 +89,16 @@ export const actions: Actions = {
       return fail(400, { handle, displayName, error: message });
     }
 
+    // Every profile gets a personal mixtape from day one — mirrors the
+    // 0014 migration backfill for pre-existing profiles. Without this
+    // row, new signups would have no Mixtape entity to add songs to or
+    // move into a group; the editor and /g/{slug} "Add my mixtape here"
+    // both assume the personal mixtape exists.
+    await supabase.from('mixtapes').insert({
+      profile_id: user.id,
+      visibility: 'unlisted'
+    });
+
     // Seed an empty-state OG image so the mixtape is shareable from the first
     // moment a handle exists. Renders the "A mixtape, waiting to begin" SVG.
     triggerOgRender(handle, { fetch, platform });
