@@ -22,12 +22,22 @@ export const load: PageServerLoad = async ({ params, locals: { supabase, safeGet
   if (!profile) throw error(404, 'Mixtape not found');
   if (profile.id !== user.id) throw error(403, 'This is not your mixtape');
 
+  // Editor only edits the personal mixtape. Group-scoped copies are
+  // independent rows (see "Copy my mixtape here") and aren't touched here.
+  const { data: personalMixtape } = await supabase
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profile.id)
+    .is('group_id', null)
+    .maybeSingle();
+  if (!personalMixtape) throw error(500, 'Personal mixtape missing — contact support.');
+
   const { data: rows, error: songsErr } = await supabase
     .from('songs')
     .select(
       'id, owner_id, position, title, artist, album, release_year, memory_year, isrc, album_art_url, source_url, songlink_url, link_status, link_attempts, link_last_attempt, link_last_error, added_at, stories(text)'
     )
-    .eq('owner_id', profile.id)
+    .eq('mixtape_id', personalMixtape.id)
     .order('position');
 
   if (songsErr) throw error(500, songsErr.message);
@@ -49,7 +59,7 @@ async function getOwnerOrFail(
   supabase: App.Locals['supabase'],
   handle: string,
   userId: string
-): Promise<{ ownerId: string } | { fail: ReturnType<typeof fail> }> {
+): Promise<{ ownerId: string; mixtapeId: string } | { fail: ReturnType<typeof fail> }> {
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
@@ -57,17 +67,30 @@ async function getOwnerOrFail(
     .maybeSingle();
   if (!profile) return { fail: fail(404, { error: 'Mixtape not found' }) };
   if (profile.id !== userId) return { fail: fail(403, { error: 'Not your mixtape' }) };
-  return { ownerId: profile.id };
+
+  // The editor edits the user's personal mixtape only (group-scoped
+  // copies are independent rows and aren't editable through this
+  // surface). Every read/write site below scopes by mixtape_id so
+  // changes never leak across copies.
+  const { data: mixtape } = await supabase
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profile.id)
+    .is('group_id', null)
+    .maybeSingle();
+  if (!mixtape) return { fail: fail(500, { error: 'Personal mixtape missing — contact support.' }) };
+
+  return { ownerId: profile.id, mixtapeId: mixtape.id as string };
 }
 
 async function nextPosition(
   supabase: App.Locals['supabase'],
-  ownerId: string
+  mixtapeId: string
 ): Promise<number> {
   const { data } = await supabase
     .from('songs')
     .select('position')
-    .eq('owner_id', ownerId)
+    .eq('mixtape_id', mixtapeId)
     .order('position', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -90,11 +113,12 @@ export const actions: Actions = {
 
     if (!title) return fail(400, { error: 'A title is required.' });
 
-    const position = await nextPosition(supabase, own.ownerId);
+    const position = await nextPosition(supabase, own.mixtapeId);
     const { data: song, error: insertErr } = await supabase
       .from('songs')
       .insert({
         owner_id: own.ownerId,
+        mixtape_id: own.mixtapeId,
         position,
         title,
         artist,
@@ -134,7 +158,7 @@ export const actions: Actions = {
       return fail(400, { error: 'Track is missing title or source URL' });
     }
 
-    const position = await nextPosition(supabase, own.ownerId);
+    const position = await nextPosition(supabase, own.mixtapeId);
     const normalized = normalizeSourceUrl(track.sourceUrl);
 
     const { data: cached } = await supabase
@@ -148,6 +172,7 @@ export const actions: Actions = {
       .from('songs')
       .insert({
         owner_id: own.ownerId,
+        mixtape_id: own.mixtapeId,
         position,
         title: track.title,
         artist: track.artist,
@@ -191,7 +216,7 @@ export const actions: Actions = {
       return fail(400, { error: message, url });
     }
 
-    const position = await nextPosition(supabase, own.ownerId);
+    const position = await nextPosition(supabase, own.mixtapeId);
     const normalized = normalizeSourceUrl(track.sourceUrl);
 
     const { data: cached } = await supabase
@@ -206,6 +231,7 @@ export const actions: Actions = {
       .from('songs')
       .insert({
         owner_id: own.ownerId,
+        mixtape_id: own.mixtapeId,
         position,
         title: track.title,
         artist: track.artist,
@@ -262,7 +288,7 @@ export const actions: Actions = {
       return fail(400, { error: 'No songs selected.' });
     }
 
-    const startPos = await nextPosition(supabase, own.ownerId);
+    const startPos = await nextPosition(supabase, own.mixtapeId);
 
     // Cache hits become 'done' immediately; misses go to 'pending'; entries
     // without a source URL at all become 'manual'.
@@ -286,6 +312,7 @@ export const actions: Actions = {
       const linkStatus = !normalized ? 'manual' : hit?.songlinkUrl ? 'done' : 'pending';
       return {
         owner_id: own.ownerId,
+        mixtape_id: own.mixtapeId,
         position: startPos + i,
         title: t.title,
         artist: t.artist,
@@ -346,7 +373,7 @@ export const actions: Actions = {
     const existing = await supabase
       .from('songs')
       .select('source_url')
-      .eq('owner_id', own.ownerId);
+      .eq('mixtape_id', own.mixtapeId);
     const existingUrls = new Set(
       (existing.data ?? [])
         .map((r) => (r as { source_url: string | null }).source_url)
@@ -457,7 +484,7 @@ export const actions: Actions = {
       .from('songs')
       .update({ memory_year: Number.isFinite(memoryYear) ? memoryYear : null })
       .eq('id', songId)
-      .eq('owner_id', own.ownerId);
+      .eq('mixtape_id', own.mixtapeId);
     if (songErr) return fail(500, { error: songErr.message });
 
     const { error: upsertErr } = await supabase
@@ -489,7 +516,7 @@ export const actions: Actions = {
       .from('songs')
       .update(patch)
       .eq('id', songId)
-      .eq('owner_id', own.ownerId);
+      .eq('mixtape_id', own.mixtapeId);
     if (updErr) return fail(500, { error: updErr.message });
     triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
@@ -522,13 +549,13 @@ export const actions: Actions = {
     await supabase
       .from('songs')
       .update({ position: -1 })
-      .eq('owner_id', own.ownerId);
+      .eq('mixtape_id', own.mixtapeId);
     for (let i = 0; i < ids.length; i++) {
       await supabase
         .from('songs')
         .update({ position: i + 1 })
         .eq('id', ids[i])
-        .eq('owner_id', own.ownerId);
+        .eq('mixtape_id', own.mixtapeId);
     }
     triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
@@ -548,7 +575,7 @@ export const actions: Actions = {
       .from('songs')
       .delete()
       .eq('id', songId)
-      .eq('owner_id', own.ownerId);
+      .eq('mixtape_id', own.mixtapeId);
     if (delErr) return fail(500, { error: delErr.message });
     triggerOgRender(params.handle, { fetch, platform });
     return { ok: true };
