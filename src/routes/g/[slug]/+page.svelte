@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { page } from '$app/state';
   import type { ActionData, PageData } from './$types';
 
   type Props = { data: PageData; form: ActionData };
@@ -14,6 +15,18 @@
     if (d < 365) return `${Math.floor(d / 30)}mo ago`;
     return `${Math.floor(d / 365)}y ago`;
   }
+
+  function inviteUrl(code: string): string {
+    const origin = page.url.origin;
+    return `${origin}/g/${data.group.slug}/i/${code}`;
+  }
+
+  // Narrow the discriminated form payload so the template can access
+  // either the copy-flow error or the invite-flow error without TS
+  // complaints. `null`/`undefined` cases are handled by the template.
+  const inviteForm = $derived(
+    form && typeof form === 'object' && 'invite' in form ? form.invite : null
+  );
 </script>
 
 <svelte:head>
@@ -103,6 +116,90 @@
         {/if}
       {/if}
     </div>
+  {/if}
+
+  {#if data.isSteward}
+    <section class="mt-12 border-t border-rule pt-6">
+      <h2 class="text-xs uppercase tracking-wider text-ink-muted">Steward · Invite codes</h2>
+
+      {#if data.invites.length === 0}
+        <p class="mt-3 text-sm text-ink-muted">No active invite codes yet.</p>
+      {:else}
+        <ul class="mt-3 space-y-3">
+          {#each data.invites as inv (inv.id)}
+            <li class="rounded-md border border-rule bg-paper p-3">
+              <div class="flex items-baseline justify-between gap-3">
+                <code class="text-sm text-ink">{inv.code}</code>
+                <form method="POST" action="?/revokeInvite" use:enhance>
+                  <input type="hidden" name="invite_id" value={inv.id} />
+                  <button type="submit" class="text-xs text-ink-muted underline decoration-rule underline-offset-2 hover:text-accent">
+                    Revoke
+                  </button>
+                </form>
+              </div>
+              <p class="mt-1 break-all text-xs text-ink-muted">{inviteUrl(inv.code)}</p>
+              <p class="mt-1 text-xs text-ink-muted">
+                {#if inv.expiresAt}Expires {new Date(inv.expiresAt).toLocaleDateString()}{:else}No expiry{/if}
+                ·
+                {#if inv.usesRemaining !== null}{inv.usesRemaining} {inv.usesRemaining === 1 ? 'use' : 'uses'} left{:else}Unlimited uses{/if}
+              </p>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      <form method="POST" action="?/createInvite" use:enhance class="mt-4 space-y-3">
+        <label class="block">
+          <span class="text-xs uppercase tracking-wider text-ink-muted">Code</span>
+          <input
+            type="text"
+            name="code"
+            required
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            value={inviteForm && 'code' in inviteForm ? inviteForm.code ?? '' : ''}
+            class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-base text-ink focus:border-accent focus:outline-none"
+            placeholder="spring2026"
+          />
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-ink-muted">Expires in (days)</span>
+            <input
+              type="number"
+              name="expires_in_days"
+              min="1"
+              max="365"
+              value={inviteForm && 'expiresInDays' in inviteForm ? inviteForm.expiresInDays ?? '' : ''}
+              class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+              placeholder="optional"
+            />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-ink-muted">Use cap</span>
+            <input
+              type="number"
+              name="uses_cap"
+              min="1"
+              max="1000"
+              value={inviteForm && 'usesCap' in inviteForm ? inviteForm.usesCap ?? '' : ''}
+              class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+              placeholder="optional"
+            />
+          </label>
+        </div>
+
+        {#if inviteForm && 'error' in inviteForm && inviteForm.error}
+          <p role="alert" class="text-sm text-accent">{inviteForm.error}</p>
+        {/if}
+
+        <button type="submit" class="rounded-md bg-ink px-4 py-2 text-sm text-paper hover:opacity-90">
+          Mint invite
+        </button>
+      </form>
+    </section>
   {/if}
 
   <footer class="mt-10 border-t border-rule pt-6 text-sm text-ink-muted">

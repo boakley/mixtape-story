@@ -23,6 +23,16 @@ type MemberMixtape = {
   isViewer: boolean;
 };
 
+type InviteRow = {
+  id: string;
+  code: string;
+  createdAt: string;
+  expiresAt: string | null;
+  usesRemaining: number | null;
+};
+
+const CODE_RE = /^[a-z0-9][a-z0-9-]{2,30}[a-z0-9]$/;
+
 export const load: PageServerLoad = async ({ params, locals: { safeGetSession } }) => {
   gate();
 
@@ -40,6 +50,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
   if (!group) throw error(404, 'Group not found');
 
   let isMember = false;
+  let isSteward = false;
   let viewerHasGroupMixtape = false;
   let viewerHasPersonalMixtape = false;
   if (user) {
@@ -50,6 +61,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
       .eq('profile_id', user.id)
       .maybeSingle();
     isMember = !!membership;
+    isSteward = membership?.role === 'steward';
 
     if (isMember) {
       const { data: existing } = await admin
@@ -106,6 +118,26 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
   // `mixtapes` for UX but isn't counted toward this number.
   const activeMixtapeCount = mixtapes.filter((m) => m.songCount > 0).length;
 
+  // Stewards see their active (non-revoked) invite codes inline on the
+  // landing — list + a form to mint a new code. A separate /manage
+  // page can split this out later if it gets crowded.
+  let invites: InviteRow[] = [];
+  if (isSteward) {
+    const { data: inviteRows } = await admin
+      .from('group_invites')
+      .select('id, code, created_at, expires_at, uses_remaining')
+      .eq('group_id', group.id)
+      .is('revoked_at', null)
+      .order('created_at', { ascending: false });
+    invites = (inviteRows ?? []).map((i) => ({
+      id: i.id as string,
+      code: i.code as string,
+      createdAt: i.created_at as string,
+      expiresAt: i.expires_at as string | null,
+      usesRemaining: i.uses_remaining as number | null
+    }));
+  }
+
   return {
     group: {
       slug: group.slug as string,
@@ -113,11 +145,13 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
       description: group.description as string
     },
     isMember,
+    isSteward,
     memberCount,
     mixtapes,
     activeMixtapeCount,
     viewerHasGroupMixtape,
-    viewerHasPersonalMixtape
+    viewerHasPersonalMixtape,
+    invites
   };
 };
 
@@ -276,5 +310,116 @@ export const actions: Actions = {
     }
 
     return { ok: true };
+  },
+
+  // Steward mints a new invite code. Code is human-pickable, validated
+  // against the same regex baked into the schema; optional expiry and
+  // optional use cap default to "never expires, unlimited uses".
+  createInvite: async ({ params, request, locals: { safeGetSession } }) => {
+    gate();
+    const { user } = await safeGetSession();
+    if (!user) throw redirect(303, '/login');
+
+    const admin = adminClient();
+
+    const { data: group } = await admin
+      .from('groups')
+      .select('id')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    if (!group) throw error(404, 'Group not found');
+
+    const { data: membership } = await admin
+      .from('group_memberships')
+      .select('role')
+      .eq('group_id', group.id)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+    if (membership?.role !== 'steward') {
+      return fail(403, { invite: { error: 'Stewards only.' } });
+    }
+
+    const data = await request.formData();
+    const code = String(data.get('code') ?? '').trim().toLowerCase();
+    const expiresInDays = String(data.get('expires_in_days') ?? '').trim();
+    const usesCap = String(data.get('uses_cap') ?? '').trim();
+
+    if (!code || !CODE_RE.test(code)) {
+      return fail(400, {
+        invite: { code, expiresInDays, usesCap, error: 'Code must be 4–32 lowercase characters, digits, or hyphens; not start or end with a hyphen.' }
+      });
+    }
+
+    let expiresAt: string | null = null;
+    if (expiresInDays) {
+      const days = Number(expiresInDays);
+      if (!Number.isFinite(days) || days <= 0 || days > 365) {
+        return fail(400, { invite: { code, expiresInDays, usesCap, error: 'Expiry must be between 1 and 365 days.' } });
+      }
+      expiresAt = new Date(Date.now() + days * 86_400_000).toISOString();
+    }
+
+    let usesRemaining: number | null = null;
+    if (usesCap) {
+      const n = Number(usesCap);
+      if (!Number.isFinite(n) || n <= 0 || n > 1000) {
+        return fail(400, { invite: { code, expiresInDays, usesCap, error: 'Use cap must be between 1 and 1000.' } });
+      }
+      usesRemaining = n;
+    }
+
+    const { error: insertError } = await admin.from('group_invites').insert({
+      group_id: group.id,
+      code,
+      created_by: user.id,
+      expires_at: expiresAt,
+      uses_remaining: usesRemaining
+    });
+    if (insertError) {
+      // 23505 = unique_violation on (group_id, code).
+      if (insertError.code === '23505') {
+        return fail(409, { invite: { code, expiresInDays, usesCap, error: 'That code already exists for this group.' } });
+      }
+      return fail(500, { invite: { code, expiresInDays, usesCap, error: 'Could not create the invite. Try again.' } });
+    }
+
+    return { invite: { ok: true } };
+  },
+
+  // Steward revokes an invite. Soft revoke (sets revoked_at) so
+  // historical clicks render a stable "no longer active" message.
+  revokeInvite: async ({ params, request, locals: { safeGetSession } }) => {
+    gate();
+    const { user } = await safeGetSession();
+    if (!user) throw redirect(303, '/login');
+
+    const admin = adminClient();
+
+    const { data: group } = await admin
+      .from('groups')
+      .select('id')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    if (!group) throw error(404, 'Group not found');
+
+    const { data: membership } = await admin
+      .from('group_memberships')
+      .select('role')
+      .eq('group_id', group.id)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+    if (membership?.role !== 'steward') return fail(403, { invite: { error: 'Stewards only.' } });
+
+    const data = await request.formData();
+    const inviteId = String(data.get('invite_id') ?? '');
+    if (!inviteId) return fail(400, { invite: { error: 'Missing invite id.' } });
+
+    await admin
+      .from('group_invites')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', inviteId)
+      .eq('group_id', group.id);
+
+    return { invite: { ok: true } };
   }
 };
