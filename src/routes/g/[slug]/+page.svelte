@@ -51,12 +51,12 @@
       <p class="mt-1 text-sm text-ink-muted">Be the first.</p>
 
       {#if !data.viewerHasGroupMixtape}
-        <form method="POST" action="?/moveIn" use:enhance class="mt-4">
+        <form method="POST" action="?/copyIn" use:enhance class="mt-4">
           <button
             type="submit"
             class="rounded-md bg-ink px-4 py-2 text-sm text-paper hover:opacity-90"
           >
-            {data.viewerHasPersonalMixtape ? 'Move my mixtape here →' : 'Add my mixtape here →'}
+            {data.viewerHasPersonalMixtape ? 'Copy my mixtape here →' : 'Add my mixtape here →'}
           </button>
         </form>
         {#if form && 'error' in form && form.error}
@@ -90,12 +90,12 @@
       {/each}
 
       {#if data.isMember && !data.viewerHasGroupMixtape}
-        <form method="POST" action="?/moveIn" use:enhance class="mt-6">
+        <form method="POST" action="?/copyIn" use:enhance class="mt-6">
           <button
             type="submit"
             class="text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
           >
-            {data.viewerHasPersonalMixtape ? '→ Move my mixtape here' : '→ Add my mixtape here'}
+            {data.viewerHasPersonalMixtape ? '→ Copy my mixtape here' : '→ Add my mixtape here'}
           </button>
         </form>
         {#if form && 'error' in form && form.error}

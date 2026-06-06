@@ -27,37 +27,53 @@ export const load: PageServerLoad = async ({
 
   if (!profile) throw error(404, 'Mixtape not found');
 
-  const { data: rows, error: songsErr } = await supabase
-    .from('songs')
-    .select(
-      'id, position, title, artist, album, release_year, memory_year, album_art_url, songlink_url, links_by_platform, preview_url, link_status, stories(text)'
-    )
-    .eq('owner_id', profile.id)
-    .order('position');
+  // /{handle} shows the user's personal mixtape only. Since a user can
+  // have multiple mixtapes (personal + one per group, via "Copy my
+  // mixtape here"), filtering by owner_id would include the group
+  // copies too — wrong. Scope to the personal mixtape's mixtape_id.
+  const { data: personalMixtape } = await supabase
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profile.id)
+    .is('group_id', null)
+    .maybeSingle();
 
-  if (songsErr) throw error(500, songsErr.message);
+  // No personal mixtape (very old profile not yet backfilled) → page
+  // renders empty rather than 404; the profile still exists.
+  let songs: DisplaySong[] = [];
+  if (personalMixtape) {
+    const { data: rows, error: songsErr } = await supabase
+      .from('songs')
+      .select(
+        'id, position, title, artist, album, release_year, memory_year, album_art_url, songlink_url, links_by_platform, preview_url, link_status, stories(text)'
+      )
+      .eq('mixtape_id', personalMixtape.id)
+      .order('position');
 
-  const songs: DisplaySong[] = (rows ?? []).map((row) => {
-    const r = row as unknown as SongWithStory;
-    const storyRel = Array.isArray(r.stories) ? r.stories[0] : r.stories;
-    const storyText = storyRel?.text ?? '';
-    return {
-      id: r.id,
-      position: r.position,
-      title: r.title,
-      artist: r.artist,
-      album: r.album,
-      releaseYear: r.release_year,
-      memoryYear: r.memory_year,
-      albumArtUrl: r.album_art_url,
-      songlinkUrl: r.songlink_url,
-      linksByPlatform: r.links_by_platform,
-      previewUrl: r.preview_url,
-      linkStatus: r.link_status,
-      storyText,
-      storyHtml: renderStory(storyText)
-    };
-  });
+    if (songsErr) throw error(500, songsErr.message);
+
+    songs = (rows ?? []).map((row) => {
+      const r = row as unknown as SongWithStory;
+      const storyRel = Array.isArray(r.stories) ? r.stories[0] : r.stories;
+      const storyText = storyRel?.text ?? '';
+      return {
+        id: r.id,
+        position: r.position,
+        title: r.title,
+        artist: r.artist,
+        album: r.album,
+        releaseYear: r.release_year,
+        memoryYear: r.memory_year,
+        albumArtUrl: r.album_art_url,
+        songlinkUrl: r.songlink_url,
+        linksByPlatform: r.links_by_platform,
+        previewUrl: r.preview_url,
+        linkStatus: r.link_status,
+        storyText,
+        storyHtml: renderStory(storyText)
+      };
+    });
+  }
 
   const rawPref = cookies.get(LISTEN_PREF_COOKIE);
   const viewerPref: ListenPref | null = isListenPref(rawPref) ? rawPref : null;

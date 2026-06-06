@@ -25,7 +25,7 @@ Phase 3 closes all three at writing-group scale, gated behind `FEATURES_GROUPS` 
 |---|---|
 | Group URL shape | `/g/{slug}` (landing), `/g/{slug}/{handle}` (member mixtape), `/g/{slug}/i/{code}` (invite) |
 | User profile | `/u/{handle}` — viewer-aware listing; `/{handle}` keeps its personal-mixtape role |
-| Mixtape home | One scope per mixtape: personal (`/{handle}`) or one group; moving home redirects when viewer has permission, warns creator |
+| Mixtape home | One scope per mixtape row. A user can have multiple mixtapes: one personal + one per group. "Copy my mixtape here" duplicates the personal into a new group-scoped row — the personal stays put, and the copies can diverge independently. |
 | Mode | Anthology only in v1; collective deferred |
 | Joining | Invite-code only; no request-to-join (WhatsApp covers that) |
 | Roles | Steward (creator + delegates) and member |
@@ -82,7 +82,7 @@ Worth staging as 3a / 3b / 3c — see *Scope honesty* at the bottom. The list re
 
 13. **`/u/{handle}` profile page.** Viewer-aware listing of the user's mixtapes across scopes. Anonymous viewer sees public only; group members see that group's mixtape; owner sees everything.
 14. **"Songs we share" + "All songs" tabs.** See *Landing page — three tabs* below. Same component, different filter; tab strip + sub-intro per tab.
-15. **Move-mixtape-between-scopes flow.** Mixtape settings: "This mixtape lives in" → personal / one of your groups. On move, update URL; if viewer can see both old and new, redirect old → new. Creator warning: "Links you've shared previously may stop working."
+15. **Copy-mixtape-into-group flow.** Already wired via the landing page's `?/copyIn` action: clicking "Copy my mixtape here" duplicates the user's personal mixtape (mixtapes + songs + stories) into a new group-scoped row. The personal stays untouched, so the user can join multiple groups and copy into each. The two copies diverge independently after the copy point — drop a song in one and the other still has it.
 
 ### 3c — Niceties
 
