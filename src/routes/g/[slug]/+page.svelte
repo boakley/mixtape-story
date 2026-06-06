@@ -31,7 +31,7 @@
     {/if}
     {#if data.isMember}
       <p class="mt-2 text-xs text-ink-muted">
-        {data.memberCount} {data.memberCount === 1 ? 'member' : 'members'} · {data.mixtapes.length} {data.mixtapes.length === 1 ? 'mixtape' : 'mixtapes'}
+        {data.memberCount} {data.memberCount === 1 ? 'member' : 'members'} · {data.activeMixtapeCount} {data.activeMixtapeCount === 1 ? 'mixtape' : 'mixtapes'}
       </p>
     {/if}
   </header>
@@ -72,8 +72,18 @@
           class="flex items-baseline justify-between gap-4 border-b border-rule py-3 hover:text-accent"
         >
           <div>
-            <div class="text-base text-ink">{mt.displayName}'s mixtape</div>
-            <div class="mt-0.5 text-xs text-ink-muted">{mt.songCount} {mt.songCount === 1 ? 'song' : 'songs'}</div>
+            <div class="text-base {mt.songCount === 0 ? 'italic text-ink-muted' : 'text-ink'}">
+              {mt.displayName}'s mixtape
+            </div>
+            {#if mt.songCount === 0 && mt.isViewer}
+              <div class="mt-0.5 text-xs italic text-ink-muted">
+                Add a song to make this visible to the group.
+              </div>
+            {:else}
+              <div class="mt-0.5 text-xs text-ink-muted">
+                {mt.songCount} {mt.songCount === 1 ? 'song' : 'songs'}
+              </div>
+            {/if}
           </div>
           <div class="text-xs text-ink-muted">{timeAgo(mt.updatedAt)}</div>
         </a>

@@ -15,6 +15,12 @@ type MemberMixtape = {
   displayName: string;
   songCount: number;
   updatedAt: string;
+  // The viewer's own mixtape shows on the landing even when empty
+  // (with a "Add a song to make this visible" hint), so they can see
+  // themselves while contributing. Other members' empty mixtapes are
+  // filtered out — the directory is "look what we've made", not a
+  // roster of who joined.
+  isViewer: boolean;
 };
 
 export const load: PageServerLoad = async ({ params, locals: { safeGetSession } }) => {
@@ -69,25 +75,36 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
     const { data: rows } = await admin
       .from('mixtapes')
       .select(`
-        id, updated_at,
+        id, profile_id, updated_at,
         profile:profiles!inner ( handle, display_name ),
         songs:songs ( id )
       `)
       .eq('group_id', group.id)
       .order('updated_at', { ascending: false });
 
-    mixtapes =
-      (rows ?? []).map((r) => {
+    mixtapes = (rows ?? [])
+      .map((r) => {
         const profile = r.profile as unknown as { handle: string; display_name: string };
         const songs = r.songs as unknown as { id: string }[];
         return {
           handle: profile.handle,
           displayName: profile.display_name,
           songCount: songs.length,
-          updatedAt: r.updated_at as string
+          updatedAt: r.updated_at as string,
+          isViewer: r.profile_id === user?.id
         };
-      });
+      })
+      // Empty mixtapes don't appear on the landing — directory is for
+      // "look what we've made", not a join roster. The viewer's own
+      // mixtape is the one exception so they can see themselves while
+      // contributing.
+      .filter((m) => m.songCount > 0 || m.isViewer);
   }
+
+  // The header meta line counts "real" mixtapes — ones the group has
+  // actually made. The viewer's own empty row (when present) appears in
+  // `mixtapes` for UX but isn't counted toward this number.
+  const activeMixtapeCount = mixtapes.filter((m) => m.songCount > 0).length;
 
   return {
     group: {
@@ -98,6 +115,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
     isMember,
     memberCount,
     mixtapes,
+    activeMixtapeCount,
     viewerHasGroupMixtape,
     viewerHasPersonalMixtape
   };
