@@ -91,6 +91,36 @@ alter table mixtapes
 
 create index mixtapes_group_id_idx on mixtapes (group_id) where group_id is not null;
 
+-- Group deletion → member mixtapes revert to unlisted/personal scope
+-- atomically (per design-groups.md). The FK above is `on delete set null`,
+-- which on its own would nullify group_id but leave visibility='group',
+-- violating the joint constraint. This BEFORE DELETE trigger updates
+-- both fields in one statement so the cascade has nothing left to do.
+--
+-- SECURITY DEFINER is essential here: the trigger runs in the context
+-- of whoever issued the DELETE (typically a steward), and the inner
+-- UPDATE touches mixtapes owned by OTHER members. Without DEFINER, the
+-- mixtapes_update RLS policy (profile_id = auth.uid()) would block
+-- updates to other members' mixtapes, the trigger would no-op, and
+-- the FK cascade would then fail the joint constraint on those rows.
+create or replace function groups_before_delete_revert_mixtapes()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update mixtapes
+     set visibility = 'unlisted', group_id = null
+   where group_id = old.id;
+  return old;
+end;
+$$;
+
+create trigger groups_before_delete_revert_mixtapes
+  before delete on groups
+  for each row execute function groups_before_delete_revert_mixtapes();
+
 -- ============================================================
 -- 3. Group memberships
 -- ============================================================
