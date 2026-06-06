@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { triggerOgRender } from '$lib/server/og-render';
+import { safeRedirect } from '$lib/server/safe-redirect';
 import type { Actions, PageServerLoad } from './$types';
 
 const HANDLE_RE = /^[a-z][a-z0-9-]{0,30}[a-z0-9]$/;
@@ -39,7 +40,7 @@ const RESERVED = new Set([
   'a', 'b', 'm', 'u', 'x'
 ]);
 
-export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
+export const load: PageServerLoad = async ({ url, locals: { supabase, safeGetSession } }) => {
   const { user } = await safeGetSession();
   if (!user) throw redirect(303, '/login');
 
@@ -49,13 +50,19 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
     .eq('id', user.id)
     .maybeSingle();
 
-  if (profile) throw redirect(303, `/${profile.handle}`);
+  // `redirect=` lets the invite flow send brand-new visitors back to
+  // their invite URL after onboarding. Validated via safeRedirect so
+  // an attacker can't bounce users through onboarding to an external
+  // phishing target.
+  const redirectParam = url.searchParams.get('redirect');
 
-  return { email: user.email };
+  if (profile) throw redirect(303, safeRedirect(redirectParam, `/${profile.handle}`));
+
+  return { email: user.email, redirect: redirectParam };
 };
 
 export const actions: Actions = {
-  default: async ({ request, fetch, platform, locals: { supabase, safeGetSession } }) => {
+  default: async ({ request, url, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) throw redirect(303, '/login');
 
@@ -103,6 +110,7 @@ export const actions: Actions = {
     // moment a handle exists. Renders the "A mixtape, waiting to begin" SVG.
     triggerOgRender(handle, { fetch, platform });
 
-    throw redirect(303, `/${handle}`);
+    const redirectParam = url.searchParams.get('redirect');
+    throw redirect(303, safeRedirect(redirectParam, `/${handle}`));
   }
 };
