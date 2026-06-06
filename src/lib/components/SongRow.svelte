@@ -32,18 +32,10 @@
 </script>
 
 <article
-  class="grid grid-cols-[3rem_1rem_minmax(0,1fr)] gap-x-3 {view === 'compact'
+  class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 {view === 'compact'
     ? 'py-1'
     : 'py-4 sm:py-5'}"
 >
-  <div
-    class="text-right tabular-nums text-ink-muted {view === 'compact'
-      ? 'pt-[0.1875rem] text-xs'
-      : 'pt-0.5 text-sm'}"
-  >
-    {song.memoryYear ?? ''}
-  </div>
-
   <div class="relative" aria-hidden="true">
     <span
       class="absolute left-1/2 w-px -translate-x-1/2 bg-rule {view === 'compact'
