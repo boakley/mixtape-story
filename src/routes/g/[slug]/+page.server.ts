@@ -64,19 +64,27 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
     isSteward = membership?.role === 'steward';
 
     if (isMember) {
-      // Fetch the user's mixtapes plus song counts so the UI can tell
-      // "you have a group mixtape with songs" (hide the Copy button)
-      // from "you have an empty group placeholder" (still offer Copy
-      // so the user can fill it from their personal mixtape).
-      const { data: existing } = await admin
+      // Under share semantics each user has exactly one mixtape entity.
+      // The UI needs two facts:
+      //   - Does the user have a mixtape at all? (controls whether
+      //     "Share with this group" makes sense)
+      //   - Is that mixtape already shared with this group? (controls
+      //     whether the button reads "Share" or "Stop sharing")
+      const { data: mixtape } = await admin
         .from('mixtapes')
-        .select('id, group_id, songs:songs(id)')
-        .eq('profile_id', user.id);
-      const rows = (existing ?? []) as { id: string; group_id: string | null; songs: { id: string }[] }[];
-      viewerHasGroupMixtape = rows.some(
-        (m) => m.group_id === group.id && (m.songs?.length ?? 0) > 0
-      );
-      viewerHasPersonalMixtape = rows.some((m) => m.group_id === null);
+        .select('id')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+      viewerHasPersonalMixtape = !!mixtape;
+      if (mixtape) {
+        const { data: share } = await admin
+          .from('mixtape_group_shares')
+          .select('mixtape_id')
+          .eq('mixtape_id', mixtape.id)
+          .eq('group_id', group.id)
+          .maybeSingle();
+        viewerHasGroupMixtape = !!share;
+      }
     }
   }
 
@@ -90,34 +98,41 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
       .eq('group_id', group.id);
     memberCount = count ?? 0;
 
-    // Member mixtapes — only the rows scoped to this group.
+    // Member mixtapes — every mixtape shared with this group, with
+    // owner identity and song count for the directory row.
     const { data: rows } = await admin
-      .from('mixtapes')
+      .from('mixtape_group_shares')
       .select(`
-        id, profile_id, updated_at,
-        profile:profiles!inner ( handle, display_name ),
-        songs:songs ( id )
+        mixtape:mixtapes!inner (
+          id, profile_id, updated_at,
+          profile:profiles!inner ( handle, display_name ),
+          songs:songs ( id )
+        )
       `)
-      .eq('group_id', group.id)
-      .order('updated_at', { ascending: false });
+      .eq('group_id', group.id);
 
-    mixtapes = (rows ?? [])
-      .map((r) => {
-        const profile = r.profile as unknown as { handle: string; display_name: string };
-        const songs = r.songs as unknown as { id: string }[];
-        return {
-          handle: profile.handle,
-          displayName: profile.display_name,
-          songCount: songs.length,
-          updatedAt: r.updated_at as string,
-          isViewer: r.profile_id === user?.id
-        };
-      })
+    type ShareRow = {
+      mixtape: {
+        profile_id: string;
+        updated_at: string;
+        profile: { handle: string; display_name: string };
+        songs: { id: string }[];
+      };
+    };
+    mixtapes = (rows as unknown as ShareRow[] ?? [])
+      .map((r) => ({
+        handle: r.mixtape.profile.handle,
+        displayName: r.mixtape.profile.display_name,
+        songCount: r.mixtape.songs.length,
+        updatedAt: r.mixtape.updated_at,
+        isViewer: r.mixtape.profile_id === user?.id
+      }))
       // Empty mixtapes don't appear on the landing — directory is for
       // "look what we've made", not a join roster. The viewer's own
       // mixtape is the one exception so they can see themselves while
       // contributing.
-      .filter((m) => m.songCount > 0 || m.isViewer);
+      .filter((m) => m.songCount > 0 || m.isViewer)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
   // The header meta line counts "real" mixtapes — ones the group has
@@ -162,17 +177,15 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
   };
 };
 
-// "Copy my mixtape here" — duplicates the user's personal mixtape (rows
-// in songs + stories) into a new group-scoped mixtape row. The personal
-// mixtape is left untouched, so:
-//   - /{handle} keeps showing the user's personal mixtape.
-//   - The user can join multiple groups and copy into each.
-//   - The two copies diverge independently after the copy point — drop a
-//     song from the group mixtape and the personal version still has it.
-// If the user has no personal mixtape (edge case for fresh signups
-// pre-onboarding-fix), a fresh empty group mixtape is created instead.
+// Share semantics: a user has one mixtape entity, which can be visible
+// in N groups via the mixtape_group_shares join table. Edits to the
+// mixtape propagate to every group it's shared with because there's
+// only one row. To make a divergent version for a specific audience,
+// the user creates a different mixtape entity (v1.5+).
 export const actions: Actions = {
-  copyIn: async ({ params, locals: { safeGetSession } }) => {
+  // Share the user's mixtape with this group. Idempotent — the PK on
+  // (mixtape_id, group_id) makes duplicate inserts a no-op.
+  shareWith: async ({ params, locals: { safeGetSession } }) => {
     gate();
     const { user } = await safeGetSession();
     if (!user) throw redirect(303, '/login');
@@ -186,7 +199,6 @@ export const actions: Actions = {
       .maybeSingle();
     if (!group) throw error(404, 'Group not found');
 
-    // Must be a member of this group to put a mixtape in it.
     const { data: membership } = await admin
       .from('group_memberships')
       .select('role')
@@ -195,140 +207,52 @@ export const actions: Actions = {
       .maybeSingle();
     if (!membership) return fail(403, { error: 'Join this group first.' });
 
-    // Three states for the existing group mixtape:
-    //   - none → create + populate
-    //   - exists but empty → use existing id as target, populate it
-    //     (so a user who clicked Copy with an empty personal can re-fill
-    //     once they've actually added songs)
-    //   - exists with songs → bail (copy is a snapshot, not a sync; if
-    //     the user wants to overwrite they have to start by deleting it)
-    const { data: existingGroupMixtape } = await admin
+    const { data: mixtape } = await admin
       .from('mixtapes')
-      .select('id, songs:songs(id)')
+      .select('id')
       .eq('profile_id', user.id)
-      .eq('group_id', group.id)
       .maybeSingle();
-    const existingSongCount =
-      ((existingGroupMixtape?.songs as unknown as { id: string }[] | null) ?? []).length;
-    if (existingGroupMixtape && existingSongCount > 0) return { ok: true };
+    if (!mixtape) return fail(500, { error: 'No mixtape to share. Contact support.' });
 
-    // Pull the source mixtape (personal scope) along with its songs.
-    // Stories come in a second query keyed by song_id to keep this
-    // single select small.
-    const { data: source } = await admin
+    const { error: shareError } = await admin
+      .from('mixtape_group_shares')
+      .upsert(
+        { mixtape_id: mixtape.id, group_id: group.id },
+        { onConflict: 'mixtape_id,group_id' }
+      );
+    if (shareError) return fail(500, { error: 'Could not share your mixtape.' });
+
+    return { ok: true };
+  },
+
+  // Stop sharing the user's mixtape with this group. Reverses shareWith
+  // (without touching the underlying mixtape or its songs/stories).
+  unshareFrom: async ({ params, locals: { safeGetSession } }) => {
+    gate();
+    const { user } = await safeGetSession();
+    if (!user) throw redirect(303, '/login');
+
+    const admin = adminClient();
+
+    const { data: group } = await admin
+      .from('groups')
+      .select('id')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    if (!group) throw error(404, 'Group not found');
+
+    const { data: mixtape } = await admin
       .from('mixtapes')
-      .select(`
-        id,
-        songs:songs (
-          id, position, title, artist, album, release_year, memory_year,
-          isrc, album_art_url, source_url, songlink_url, link_status,
-          link_attempts, link_last_attempt, link_last_error, preview_url,
-          links_by_platform, added_at
-        )
-      `)
+      .select('id')
       .eq('profile_id', user.id)
-      .is('group_id', null)
       .maybeSingle();
+    if (!mixtape) return { ok: true };
 
-    let targetMixtapeId: string;
-    if (existingGroupMixtape) {
-      targetMixtapeId = existingGroupMixtape.id as string;
-    } else {
-      const { data: newMixtape, error: mixtapeError } = await admin
-        .from('mixtapes')
-        .insert({ profile_id: user.id, group_id: group.id, visibility: 'group' })
-        .select('id')
-        .single();
-      if (mixtapeError || !newMixtape) {
-        return fail(500, { error: 'Could not create the group mixtape.' });
-      }
-      targetMixtapeId = newMixtape.id as string;
-    }
-
-    type SourceSong = {
-      id: string;
-      position: number;
-      title: string;
-      artist: string | null;
-      album: string | null;
-      release_year: number | null;
-      memory_year: number | null;
-      isrc: string | null;
-      album_art_url: string | null;
-      source_url: string | null;
-      songlink_url: string | null;
-      link_status: string;
-      link_attempts: number;
-      link_last_attempt: string | null;
-      link_last_error: string | null;
-      preview_url: string | null;
-      links_by_platform: Record<string, { url: string }> | null;
-      added_at: string;
-    };
-    const sourceSongs = (source?.songs ?? []) as SourceSong[];
-    if (sourceSongs.length === 0) {
-      // Nothing to copy — fresh empty group mixtape is the result.
-      return { ok: true };
-    }
-
-    // Pre-generate UUIDs so we can map old song.id → new song.id for
-    // the story copy that follows.
-    const idMap = new Map<string, string>();
-    const newSongRows = sourceSongs.map((s) => {
-      const newId = crypto.randomUUID();
-      idMap.set(s.id, newId);
-      return {
-        id: newId,
-        owner_id: user.id,
-        mixtape_id: targetMixtapeId,
-        position: s.position,
-        title: s.title,
-        artist: s.artist,
-        album: s.album,
-        release_year: s.release_year,
-        memory_year: s.memory_year,
-        isrc: s.isrc,
-        album_art_url: s.album_art_url,
-        source_url: s.source_url,
-        songlink_url: s.songlink_url,
-        link_status: s.link_status,
-        link_attempts: s.link_attempts,
-        link_last_attempt: s.link_last_attempt,
-        link_last_error: s.link_last_error,
-        preview_url: s.preview_url,
-        links_by_platform: s.links_by_platform,
-        added_at: s.added_at
-      };
-    });
-
-    const { error: songsError } = await admin.from('songs').insert(newSongRows);
-    if (songsError) {
-      // If we just created the target mixtape (rather than refilling an
-      // existing empty one), roll it back so the user can retry cleanly.
-      if (!existingGroupMixtape) {
-        await admin.from('mixtapes').delete().eq('id', targetMixtapeId);
-      }
-      return fail(500, { error: 'Could not copy your songs.' });
-    }
-
-    // Copy stories, mapping old song_id → new song_id.
-    const oldSongIds = sourceSongs.map((s) => s.id);
-    const { data: sourceStories } = await admin
-      .from('stories')
-      .select('song_id, text, updated_at')
-      .in('song_id', oldSongIds);
-
-    const newStoryRows = (sourceStories ?? [])
-      .map((s) => {
-        const newSongId = idMap.get(s.song_id as string);
-        if (!newSongId) return null;
-        return { song_id: newSongId, text: s.text as string, updated_at: s.updated_at as string };
-      })
-      .filter((r): r is { song_id: string; text: string; updated_at: string } => r !== null);
-
-    if (newStoryRows.length > 0) {
-      await admin.from('stories').insert(newStoryRows);
-    }
+    await admin
+      .from('mixtape_group_shares')
+      .delete()
+      .eq('mixtape_id', mixtape.id)
+      .eq('group_id', group.id);
 
     return { ok: true };
   },

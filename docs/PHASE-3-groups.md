@@ -5,6 +5,7 @@
 
 **Divergences from the source doc:**
 - The group landing is **three tabs** (Member mixtapes default · Songs we share · All songs), not directory-only. Decided 2026-05-26.
+- Mixtape-in-group is **share, not copy**. The source doc and an earlier 3a iteration treated each group-scoped mixtape as a separate row that needed to be re-populated; both fought the user's expectation that editing "my mixtape" should propagate. Decided 2026-06-06 after the writing-group test exposed the conflict. Implementation: a `mixtape_group_shares` join table; `mixtapes.group_id` and the `'group'` visibility value are removed.
 - The **year column is removed** from song views (personal + group); the **rail + accent dots are kept** for the bulleted-list-with-spine look. `memory_year` is kept as the "This song reminds me of …" in-story lead-in but no longer a structural sort key. Decided 2026-06-05 after low adoption signal; the `SongRow.svelte` change is already live on the personal page.
 - Stories in the song views (Songs we share, All songs) are **truncated to the first ~2 sentences with an inline `[more]` toggle**. Personal mixtape view keeps full-length stories.
 - Group description is **editable inline by stewards** via a pencil affordance at the end of the description text.
@@ -25,7 +26,7 @@ Phase 3 closes all three at writing-group scale, gated behind `FEATURES_GROUPS` 
 |---|---|
 | Group URL shape | `/g/{slug}` (landing), `/g/{slug}/{handle}` (member mixtape), `/g/{slug}/i/{code}` (invite) |
 | User profile | `/u/{handle}` — viewer-aware listing; `/{handle}` keeps its personal-mixtape role |
-| Mixtape home | One scope per mixtape row. A user can have multiple mixtapes: one personal + one per group. "Copy my mixtape here" duplicates the personal into a new group-scoped row — the personal stays put, and the copies can diverge independently. |
+| Mixtape home | One mixtape entity per user (v1). It can be shared with N groups via a `mixtape_group_shares` join table; edits propagate everywhere it's shared because there's only one row. Divergent versions for different audiences are achieved by making a *different* mixtape entity (v1.5+, `/u/{handle}/{slug}` per `design-groups.md` §1a). |
 | Mode | Anthology only in v1; collective deferred |
 | Joining | Invite-code only; no request-to-join (WhatsApp covers that) |
 | Roles | Steward (creator + delegates) and member |
@@ -82,7 +83,7 @@ Worth staging as 3a / 3b / 3c — see *Scope honesty* at the bottom. The list re
 
 13. **`/u/{handle}` profile page.** Viewer-aware listing of the user's mixtapes across scopes. Anonymous viewer sees public only; group members see that group's mixtape; owner sees everything.
 14. **"Songs we share" + "All songs" tabs.** See *Landing page — three tabs* below. Same component, different filter; tab strip + sub-intro per tab.
-15. **Copy-mixtape-into-group flow.** Already wired via the landing page's `?/copyIn` action: clicking "Copy my mixtape here" duplicates the user's personal mixtape (mixtapes + songs + stories) into a new group-scoped row. The personal stays untouched, so the user can join multiple groups and copy into each. The two copies diverge independently after the copy point — drop a song in one and the other still has it.
+15. **Share-mixtape-with-group flow.** Wired via `?/shareWith` (inserts a row in `mixtape_group_shares`) and `?/unshareFrom` (deletes it). One mixtape entity per user; sharing adds an edge to a group. Edits at `/{handle}/edit` propagate everywhere the mixtape is shared because the songs and stories live on one row. **No copy, no snapshot, no divergence** — by design. For divergent versions, a user makes a second mixtape entity (v1.5+).
 
 ### 3c — Niceties
 

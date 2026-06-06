@@ -22,13 +22,14 @@ export const load: PageServerLoad = async ({ params, locals: { supabase, safeGet
   if (!profile) throw error(404, 'Mixtape not found');
   if (profile.id !== user.id) throw error(403, 'This is not your mixtape');
 
-  // Editor only edits the personal mixtape. Group-scoped copies are
-  // independent rows (see "Copy my mixtape here") and aren't touched here.
+  // Each profile owns exactly one mixtape entity (v1). The editor
+  // operates on it directly; the user's shares with groups don't change
+  // anything about the editor's surface — edits propagate to wherever
+  // the mixtape is shared because there's only one row.
   const { data: personalMixtape } = await supabase
     .from('mixtapes')
     .select('id')
     .eq('profile_id', profile.id)
-    .is('group_id', null)
     .maybeSingle();
   if (!personalMixtape) throw error(500, 'Personal mixtape missing — contact support.');
 
@@ -68,15 +69,13 @@ async function getOwnerOrFail(
   if (!profile) return { fail: fail(404, { error: 'Mixtape not found' }) };
   if (profile.id !== userId) return { fail: fail(403, { error: 'Not your mixtape' }) };
 
-  // The editor edits the user's personal mixtape only (group-scoped
-  // copies are independent rows and aren't editable through this
-  // surface). Every read/write site below scopes by mixtape_id so
-  // changes never leak across copies.
+  // Each profile owns one mixtape entity (v1); the editor operates on
+  // it. Edits propagate to every group the mixtape is shared with
+  // because there's only one row to update.
   const { data: mixtape } = await supabase
     .from('mixtapes')
     .select('id')
     .eq('profile_id', profile.id)
-    .is('group_id', null)
     .maybeSingle();
   if (!mixtape) return { fail: fail(500, { error: 'Personal mixtape missing — contact support.' }) };
 

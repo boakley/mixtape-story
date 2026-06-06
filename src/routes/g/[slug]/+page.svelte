@@ -64,12 +64,12 @@
       <p class="mt-1 text-sm text-ink-muted">Be the first.</p>
 
       {#if !data.viewerHasGroupMixtape}
-        <form method="POST" action="?/copyIn" use:enhance class="mt-4">
+        <form method="POST" action="?/shareWith" use:enhance class="mt-4">
           <button
             type="submit"
             class="rounded-md bg-ink px-4 py-2 text-sm text-paper hover:opacity-90"
           >
-            {data.viewerHasPersonalMixtape ? 'Copy my mixtape here →' : 'Add my mixtape here →'}
+            Share my mixtape with this group →
           </button>
         </form>
         {#if form && 'error' in form && form.error}
@@ -103,17 +103,26 @@
       {/each}
 
       {#if data.isMember && !data.viewerHasGroupMixtape}
-        <form method="POST" action="?/copyIn" use:enhance class="mt-6">
+        <form method="POST" action="?/shareWith" use:enhance class="mt-6">
           <button
             type="submit"
             class="text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
           >
-            {data.viewerHasPersonalMixtape ? '→ Copy my mixtape here' : '→ Add my mixtape here'}
+            → Share my mixtape with this group
           </button>
         </form>
         {#if form && 'error' in form && form.error}
           <p role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
         {/if}
+      {:else if data.isMember && data.viewerHasGroupMixtape}
+        <form method="POST" action="?/unshareFrom" use:enhance class="mt-6">
+          <button
+            type="submit"
+            class="text-sm text-ink-muted underline decoration-rule underline-offset-2 hover:text-accent"
+          >
+            Stop sharing my mixtape with this group
+          </button>
+        </form>
       {/if}
     </div>
   {/if}

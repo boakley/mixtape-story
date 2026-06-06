@@ -27,19 +27,20 @@ export const load: PageServerLoad = async ({
 
   if (!profile) throw error(404, 'Mixtape not found');
 
-  // /{handle} shows the user's personal mixtape only. Since a user can
-  // have multiple mixtapes (personal + one per group, via "Copy my
-  // mixtape here"), filtering by owner_id would include the group
-  // copies too — wrong. Scope to the personal mixtape's mixtape_id.
+  // /{handle} shows the user's mixtape. Under share semantics each user
+  // has exactly one mixtape entity; it can be shared with N groups via
+  // the mixtape_group_shares table, but there's only one row's worth of
+  // songs and stories. Scoping song reads to the mixtape's id ensures
+  // we only see this user's content (defense in depth even though
+  // owner_id alone would work today).
   const { data: personalMixtape } = await supabase
     .from('mixtapes')
     .select('id')
     .eq('profile_id', profile.id)
-    .is('group_id', null)
     .maybeSingle();
 
-  // No personal mixtape (very old profile not yet backfilled) → page
-  // renders empty rather than 404; the profile still exists.
+  // No mixtape (very old profile not yet backfilled) → page renders
+  // empty rather than 404; the profile still exists.
   let songs: DisplaySong[] = [];
   if (personalMixtape) {
     const { data: rows, error: songsErr } = await supabase
