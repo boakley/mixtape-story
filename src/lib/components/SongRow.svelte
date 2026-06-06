@@ -45,8 +45,8 @@
     <span
       class="absolute left-1/2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper {view ===
       'compact'
-        ? 'top-[0.3125rem] h-1.5 w-1.5'
-        : 'top-[0.4375rem] h-2.5 w-2.5'}"
+        ? 'top-[0.625rem] h-1.5 w-1.5'
+        : 'top-[0.75rem] h-2.5 w-2.5 sm:top-[0.9375rem]'}"
     ></span>
   </div>
 
