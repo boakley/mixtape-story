@@ -84,23 +84,34 @@
           href="/{mt.handle}"
           data-testid="member-card"
           data-handle={mt.handle}
-          class="flex items-baseline justify-between gap-4 border-b border-rule py-3 hover:text-accent"
+          class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 border-b border-rule hover:text-accent"
         >
-          <div>
-            <div class="text-base {mt.songCount === 0 ? 'italic text-ink-muted' : 'text-ink'}">
-              {mt.displayName}'s mixtape
+          <div class="relative" aria-hidden="true">
+            <span
+              class="absolute -bottom-2 -top-2 left-1/2 w-px -translate-x-1/2 bg-rule"
+            ></span>
+            <span
+              class="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-paper"
+            ></span>
+          </div>
+          <div class="py-2">
+            <div class="flex items-baseline justify-between gap-4">
+              <span class={mt.songCount === 0 ? 'italic text-ink-muted' : 'text-ink'}>
+                <span class="text-base">{mt.displayName}'s mixtape</span>
+                {#if mt.songCount > 0}
+                  <span class="ml-1.5 text-xs text-ink-muted">
+                    ({mt.songCount} {mt.songCount === 1 ? 'song' : 'songs'})
+                  </span>
+                {/if}
+              </span>
+              <span class="shrink-0 text-xs text-ink-muted">{timeAgo(mt.updatedAt)}</span>
             </div>
             {#if mt.songCount === 0 && mt.isViewer}
-              <div class="mt-0.5 text-xs italic text-ink-muted">
+              <p class="mt-0.5 text-xs italic text-ink-muted">
                 Add a song to make this visible to the group.
-              </div>
-            {:else}
-              <div class="mt-0.5 text-xs text-ink-muted">
-                {mt.songCount} {mt.songCount === 1 ? 'song' : 'songs'}
-              </div>
+              </p>
             {/if}
           </div>
-          <div class="text-xs text-ink-muted">{timeAgo(mt.updatedAt)}</div>
         </a>
       {/each}
 
@@ -130,7 +141,7 @@
   {/if}
 
   {#if data.isSteward}
-    <section class="mt-12 border-t border-rule pt-6">
+    <section class="mt-10 rounded-md border border-rule bg-paper p-5">
       <h2 class="text-xs uppercase tracking-wider text-ink-muted">Steward · Invite codes</h2>
 
       {#if data.invites.length === 0}
