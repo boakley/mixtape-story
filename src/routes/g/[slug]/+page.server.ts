@@ -1,6 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { isFeatureEnabled } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
+import { renderStory } from '$lib/server/markdown';
+import { truncateStory, normalizeSongKey } from '$lib/server/story-truncate';
 import type { Actions, PageServerLoad } from './$types';
 
 // The group landing page. Anyone can see name + description; only members
@@ -29,6 +31,32 @@ type InviteRow = {
   createdAt: string;
   expiresAt: string | null;
   usesRemaining: number | null;
+};
+
+// Per-contributor entry on an aggregated song. Stories are pre-rendered
+// (excerpt + full) so the client can toggle without round-tripping.
+type SongContributor = {
+  handle: string;
+  displayName: string;
+  memoryYear: number | null;
+  storyExcerptHtml: string;
+  storyFullHtml: string;
+  storyIsTruncated: boolean;
+  addedAt: string;
+};
+
+// Aggregated "song" entry for the Songs-we-share and All-songs tabs.
+// One row per dedup key (ISRC when present, else normalized title+artist).
+// Canonical metadata is the first contributor's, upgraded as later
+// contributors fill in nulls (e.g., first hit has no album art, second does).
+type AggregatedSong = {
+  dedupKey: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  songlinkUrl: string | null;
+  contributors: SongContributor[];
+  newestAddedAt: string;
 };
 
 const CODE_RE = /^[a-z0-9][a-z0-9-]{2,30}[a-z0-9]$/;
@@ -90,6 +118,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
 
   let memberCount = 0;
   let mixtapes: MemberMixtape[] = [];
+  let aggregatedSongs: AggregatedSong[] = [];
 
   if (isMember) {
     const { count } = await admin
@@ -98,28 +127,52 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
       .eq('group_id', group.id);
     memberCount = count ?? 0;
 
-    // Member mixtapes — every mixtape shared with this group, with
-    // owner identity and song count for the directory row.
+    // One query covers both the Member-mixtapes directory and the
+    // song-level aggregation for the Songs-we-share / All-songs tabs.
+    // At writing-group scale (≤20 members × ≤30 songs each) the row
+    // count is small; computing aggregates in JS beats a materialized
+    // view that has to be invalidated on every write.
     const { data: rows } = await admin
       .from('mixtape_group_shares')
       .select(`
         mixtape:mixtapes!inner (
           id, profile_id, updated_at,
           profile:profiles!inner ( handle, display_name ),
-          songs:songs ( id )
+          songs:songs (
+            id, title, artist, album, isrc, songlink_url,
+            memory_year, added_at,
+            stories ( text )
+          )
         )
       `)
       .eq('group_id', group.id);
 
+    type SongRow = {
+      id: string;
+      title: string;
+      artist: string | null;
+      album: string | null;
+      isrc: string | null;
+      songlink_url: string | null;
+      memory_year: number | null;
+      added_at: string;
+      stories: { text: string }[] | { text: string } | null;
+    };
     type ShareRow = {
       mixtape: {
         profile_id: string;
         updated_at: string;
         profile: { handle: string; display_name: string };
-        songs: { id: string }[];
+        songs: SongRow[];
       };
     };
-    mixtapes = (rows as unknown as ShareRow[] ?? [])
+
+    const shareRows = (rows as unknown as ShareRow[]) ?? [];
+
+    // Member-mixtape directory (Member-mixtapes tab) — empty mixtapes
+    // are filtered out except the viewer's own, which shows even when
+    // empty with an "Add a song to make this visible" hint.
+    mixtapes = shareRows
       .map((r) => ({
         handle: r.mixtape.profile.handle,
         displayName: r.mixtape.profile.display_name,
@@ -127,12 +180,61 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
         updatedAt: r.mixtape.updated_at,
         isViewer: r.mixtape.profile_id === user?.id
       }))
-      // Empty mixtapes don't appear on the landing — directory is for
-      // "look what we've made", not a join roster. The viewer's own
-      // mixtape is the one exception so they can see themselves while
-      // contributing.
       .filter((m) => m.songCount > 0 || m.isViewer)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    // Song-level aggregation (Songs-we-share + All-songs tabs).
+    const byKey = new Map<string, AggregatedSong>();
+    for (const share of shareRows) {
+      const { handle, display_name: displayName } = share.mixtape.profile;
+      for (const song of share.mixtape.songs) {
+        const storyRel = Array.isArray(song.stories) ? song.stories[0] : song.stories;
+        const storyText = storyRel?.text ?? '';
+        const trunc = truncateStory(storyText);
+
+        const contributor: SongContributor = {
+          handle,
+          displayName,
+          memoryYear: song.memory_year,
+          storyExcerptHtml: renderStory(trunc.excerpt),
+          // Full HTML is only needed if there's a [more] toggle — saves
+          // bytes on stories that fit under the truncation cap.
+          storyFullHtml: trunc.isTruncated ? renderStory(storyText) : '',
+          storyIsTruncated: trunc.isTruncated,
+          addedAt: song.added_at
+        };
+
+        const key = normalizeSongKey(song.title, song.artist, song.isrc);
+        const existing = byKey.get(key);
+        if (existing) {
+          existing.contributors.push(contributor);
+          if (contributor.addedAt > existing.newestAddedAt) {
+            existing.newestAddedAt = contributor.addedAt;
+          }
+          if (!existing.songlinkUrl && song.songlink_url) existing.songlinkUrl = song.songlink_url;
+          if (!existing.album && song.album) existing.album = song.album;
+        } else {
+          byKey.set(key, {
+            dedupKey: key,
+            title: song.title,
+            artist: song.artist,
+            album: song.album,
+            songlinkUrl: song.songlink_url,
+            contributors: [contributor],
+            newestAddedAt: contributor.addedAt
+          });
+        }
+      }
+    }
+
+    // Stories under one song: earliest first (preserves thread feel).
+    // Songs across the list: newest added first (max contributor.addedAt).
+    for (const s of byKey.values()) {
+      s.contributors.sort((a, b) => a.addedAt.localeCompare(b.addedAt));
+    }
+    aggregatedSongs = Array.from(byKey.values()).sort((a, b) =>
+      b.newestAddedAt.localeCompare(a.newestAddedAt)
+    );
   }
 
   // The header meta line counts "real" mixtapes — ones the group has
@@ -171,6 +273,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
     memberCount,
     mixtapes,
     activeMixtapeCount,
+    songs: aggregatedSongs,
     viewerHasGroupMixtape,
     viewerHasPersonalMixtape,
     invites

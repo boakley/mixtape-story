@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import SongRow from '$lib/components/SongRow.svelte';
   import QrDialog from '$lib/components/QrDialog.svelte';
+  import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
   import {
     LISTEN_PREF_COOKIE,
     LISTEN_SERVICES,
@@ -12,9 +13,6 @@
 
   type Props = { data: PageData };
   let { data }: Props = $props();
-
-  type View = 'expanded' | 'compact';
-  const STORAGE_KEY = 'mixtapestory:view';
 
   let view = $state<View>('compact');
   let qrOpen = $state(false);
@@ -45,20 +43,6 @@
       document.cookie = `${LISTEN_PREF_COOKIE}=${key}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
     } else {
       document.cookie = `${LISTEN_PREF_COOKIE}=; path=/; max-age=0; samesite=lax`;
-    }
-  }
-
-  $effect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'compact' || saved === 'expanded') view = saved;
-  });
-
-  function setView(next: View) {
-    view = next;
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* storage may be disabled — non-fatal */
     }
   }
 
@@ -178,28 +162,7 @@
         {/if}
       </div>
 
-      <div class="inline-flex rounded-full border border-rule p-0.5 text-xs">
-        <button
-          type="button"
-          onclick={() => setView('expanded')}
-          aria-pressed={view === 'expanded'}
-          class="rounded-full px-3 py-1 transition-colors {view === 'expanded'
-            ? 'bg-ink text-paper'
-            : 'text-ink-muted hover:text-ink'}"
-        >
-          Expanded
-        </button>
-        <button
-          type="button"
-          onclick={() => setView('compact')}
-          aria-pressed={view === 'compact'}
-          class="rounded-full px-3 py-1 transition-colors {view === 'compact'
-            ? 'bg-ink text-paper'
-            : 'text-ink-muted hover:text-ink'}"
-        >
-          Compact
-        </button>
-      </div>
+      <ViewToggle bind:view />
     </div>
 
     <p class="mt-3 text-sm text-ink-muted">
