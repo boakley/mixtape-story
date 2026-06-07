@@ -13,7 +13,10 @@ export default defineConfig({
   // report) lives under testing/e2e/results/ — gitignored and safe
   // to `rm -rf` without touching any tests, fixtures, or page objects.
   outputDir: './testing/e2e/results/artifacts',
-  fullyParallel: false, // E2E suite walks a single journey; serialize for clarity
+  // Tests are parallel-safe — each worker's seed/wipe uses a
+  // `*-w{TEST_WORKER_INDEX}` namespace so siblings don't collide on
+  // the profiles_handle_key constraint or trample each other's data.
+  fullyParallel: true,
   forbidOnly: isCI,
   // Cold-start flakes (first SvelteKit route compilation, first
   // Supabase admin call) can blow past the default 5s expect timeout.
@@ -23,7 +26,11 @@ export default defineConfig({
   // Pre-compile representative routes so the first real test starts
   // against a warm dev server (see global-setup.ts for the rationale).
   globalSetup: './testing/e2e/fixtures/global-setup.ts',
-  workers: 1,
+  // Default workers = half available cores. Locally that gives a solid
+  // speedup; CI can override via PLAYWRIGHT_WORKERS or workers config.
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : undefined,
   reporter: isCI
     ? [['list'], ['html', { open: 'never', outputFolder: './testing/e2e/results/report' }]]
     : [['list']],

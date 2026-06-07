@@ -32,10 +32,7 @@ export class Mixtape {
 
   /** Number of songs in the meta line of /{handle}. */
   async songCount(): Promise<number> {
-    const text = await this.page
-      .locator('main p.text-sm.text-ink-muted')
-      .first()
-      .textContent();
+    const text = await this.page.getByTestId('mixtape-meta').textContent();
     const m = text?.match(/(\d+)\s+songs?/);
     return m ? Number(m[1]) : 0;
   }
@@ -43,39 +40,50 @@ export class Mixtape {
   /**
    * Use the editor's text-list paste flow to add one or more songs.
    * Pastes the list, clicks "Find songs", waits for the preview to
-   * render with at least `expected` matched rows, then commits.
+   * render, then commits via the "Import N songs" button.
    */
-  async addSongsByList(lines: string[], expected = lines.length): Promise<void> {
+  async addSongsByList(lines: string[]): Promise<void> {
     await this.openEditor();
-    const textarea = this.page.locator('textarea[name="text"]').first();
-    await textarea.fill(lines.join('\n'));
+    // Paste textarea has id="list-input". Avoids ambiguity with the
+    // story editor's textarea (which also uses name="text").
+    await this.page.locator('#list-input').fill(lines.join('\n'));
     await this.page.getByRole('button', { name: 'Find songs' }).click();
 
-    // The preview renders a list of resolved tracks; wait for the
-    // import button to be enabled. The button text reflects the
-    // commit step ("Add N songs" or similar).
-    const importBtn = this.page.getByRole('button', { name: /add \d+ song/i });
-    await importBtn.waitFor({ state: 'visible', timeout: 15_000 });
+    // The preview-resolved import button reads "Import N songs". Wait
+    // for it with a generous timeout — Apple Music search can take a
+    // few seconds when the cache is cold.
+    const importBtn = this.page.getByRole('button', { name: /^Import \d+ songs?$/ });
+    await importBtn.waitFor({ state: 'visible', timeout: 20_000 });
     await importBtn.click();
-    // Editor redirects/refreshes back to itself with the new rows
-    // visible; wait for them.
+    // Editor refreshes back to itself with the new rows.
     await this.page.waitForLoadState('networkidle');
   }
 
   /**
-   * Edit the song at `position` (1-based). Opens the story editor for
-   * that song, fills in the text, optionally sets memory_year, saves.
+   * Open the story editor for the song at `position` (1-based), fill
+   * in the text, optionally set memory_year, save. Uses the
+   * `song-row` test-id so reordering or class-name changes don't
+   * break the selector. Waits for the save-story form action's
+   * response before returning so callers don't race ahead and read
+   * the public page before the save has committed.
    */
   async writeStory(position: number, text: string, memoryYear?: number): Promise<void> {
     await this.openEditor();
-    const row = this.page.locator('article.song-row').nth(position - 1);
-    await row.getByRole('button', { name: /story/i }).first().click();
+    await this.page.waitForLoadState('networkidle');
+    const row = this.page.getByTestId('song-row').nth(position - 1);
+    await row.getByRole('button', { name: /^Story✓?$/ }).click();
     const storyInput = row.locator('textarea[name="text"]');
     await storyInput.fill(text);
     if (memoryYear !== undefined) {
       await row.locator('input[name="memory_year"]').fill(String(memoryYear));
     }
-    await row.getByRole('button', { name: /save/i }).click();
+    await Promise.all([
+      this.page.waitForResponse(
+        (r) => r.url().includes('save_story') && r.request().method() === 'POST',
+        { timeout: 15_000 }
+      ),
+      row.getByRole('button', { name: /save story/i }).click()
+    ]);
   }
 
   /** Click "Share" on the public page — triggers navigator.share or wa.me fallback. */

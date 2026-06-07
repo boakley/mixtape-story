@@ -2,11 +2,13 @@
 // fills the form, lands on /g/{slug} as the steward of a new group.
 
 import { test, expect } from '../fixtures/test';
+import { workerGroupSlug } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 
-test.skip('a creator creates a group and lands as steward', async ({ creator }) => {
+test('a creator creates a group and lands as steward', async ({ creator }) => {
+  const slug = workerGroupSlug('writing-circle');
   const group = await createGroup(creator.page, {
-    slug: 'e2e-writing-circle',
+    slug,
     name: 'E2E Writing Circle',
     description: 'A small group sharing songs and the stories that explain them.'
   });

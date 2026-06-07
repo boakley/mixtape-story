@@ -8,7 +8,6 @@
 
 import { test as base, expect, type Page } from '@playwright/test';
 import { seedUser, wipeTestData, type SeededUser } from './auth';
-import { clearInbox } from './mailpit';
 import { Mixtape } from '../pages/mixtape';
 import { Group } from '../pages/group';
 
@@ -28,18 +27,30 @@ type Fixtures = {
 
 export const test = base.extend<Fixtures>({
   creator: async ({ browser }, use) => {
-    const seeded = await seedUser({ handle: 'sam', displayName: 'Sam' });
+    // Wipe inline so cleanup happens immediately before the seed.
+    // Worker-scoped: each parallel worker only touches its own
+    // `*-w{idx}` namespace, so siblings don't trample each other.
+    // Idempotent: harmless to call even when there's nothing to clean.
+    // Inbox isn't cleared — emails are uniquely-keyed by timestamp and
+    // Mailpit search filters by `to:email`, so cross-worker emails
+    // don't collide.
+    await wipeTestData();
 
-    // Open a fresh context, navigate to the session URL to set the
-    // auth cookie, then hand the test a page that's already signed in.
+    const seeded = await seedUser({ baseHandle: 'sam', displayName: 'Sam' });
+
+    // Open a fresh context, sign in via the test-only /api/test/session
+    // endpoint (which calls signInWithPassword through the SvelteKit
+    // SSR Supabase client, setting the right cookies on the browser
+    // context), then hand the test a page that's already signed in.
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    // Supabase's action_link points to the auth callback with a code;
-    // navigating it sets the session cookie. We end up on /me by
-    // default, but the test will navigate where it needs to.
-    await page.goto(seeded.sessionUrl);
-    await page.waitForURL((url) => !url.toString().includes('/auth/'), { timeout: 10_000 });
+    const res = await page.request.post('/api/test/session', {
+      data: { email: seeded.email, password: seeded.password }
+    });
+    if (!res.ok()) {
+      throw new Error(`Could not sign in seeded user: ${res.status()} ${await res.text()}`);
+    }
 
     const mixtape = new Mixtape(page, seeded.handle, seeded.displayName);
 
@@ -62,14 +73,6 @@ export const test = base.extend<Fixtures>({
     await use({ page });
     await context.close();
   }
-});
-
-// Wipe test data + the Mailpit inbox before each test so journeys
-// start from a known clean slate. Failures here would obscure the
-// real test failure, so any error is surfaced explicitly.
-test.beforeEach(async () => {
-  await wipeTestData();
-  await clearInbox();
 });
 
 export { expect };

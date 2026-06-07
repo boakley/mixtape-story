@@ -6,17 +6,22 @@
 // browser contexts (steward + visitor) and the real magic-link path.
 
 import { test, expect } from '../fixtures/test';
+import { workerGroupSlug, workerHandle } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 import { fetchMagicLinkFor } from '../fixtures/mailpit';
 
-test.skip('a steward invites someone; the invitee joins via magic link', async ({ creator, visitor }) => {
+test('a steward invites someone; the invitee joins via magic link', async ({ creator, visitor }) => {
+  const slug = workerGroupSlug('spring-cohort');
+  const code = workerGroupSlug('spring2026'); // same naming pattern works for codes
+  const timHandle = workerHandle('tim');
+
   // Steward sets up the group and mints an invite.
   const group = await createGroup(creator.page, {
-    slug: 'e2e-spring-cohort',
+    slug,
     name: 'E2E Spring Cohort'
   });
-  const inviteUrl = await group.mintInvite('e2e-spring2026');
-  expect(inviteUrl).toContain('/g/e2e-spring-cohort/i/e2e-spring2026');
+  const inviteUrl = await group.mintInvite(code);
+  expect(inviteUrl).toContain(`/g/${slug}/i/${code}`);
 
   // Visitor (anon) opens the invite URL — they see the welcome page.
   await visitor.page.goto(inviteUrl);
@@ -26,8 +31,18 @@ test.skip('a steward invites someone; the invitee joins via magic link', async (
 
   // Visitor enters email and submits.
   const email = `joiner-${Date.now()}@e2e.local`;
+  // Wait for the invite page to hydrate before submitting — without
+  // this, the form posts before use:enhance is wired up and the
+  // response-wait predicate misses it.
+  await visitor.page.waitForLoadState('networkidle');
   await visitor.page.locator('input[name="email"]').fill(email);
-  await visitor.page.getByRole('button', { name: /send me a link/i }).click();
+  await Promise.all([
+    visitor.page.waitForResponse(
+      (r) => r.url().includes('/i/') && r.request().method() === 'POST',
+      { timeout: 30_000 }
+    ),
+    visitor.page.getByRole('button', { name: /send me a link/i }).click()
+  ]);
   await expect(visitor.page.getByText(/check.*for the magic link/i)).toBeVisible();
 
   // Magic link arrives in Mailpit; visitor follows it. Lands at the
@@ -40,14 +55,13 @@ test.skip('a steward invites someone; the invitee joins via magic link', async (
   // Visitor picks a handle. Onboarding honors the redirect param and
   // sends them back to the invite URL → membership is inserted →
   // landing renders with `?joined=1`.
-  await visitor.page.locator('input[name="handle"]').fill('tim');
+  await visitor.page.locator('input[name="handle"]').fill(timHandle);
   await visitor.page.locator('input[name="display_name"]').fill('Tim');
   await visitor.page.getByRole('button', { name: /claim/i }).click();
-  await visitor.page.waitForURL(/\/g\/e2e-spring-cohort/);
+  await visitor.page.waitForURL(new RegExp(`/g/${slug}`));
 
   // Visitor is now a member; counts reflect that.
-  await visitor.page.goto('/g/e2e-spring-cohort');
-  const visitorGroup = await creator.visitGroup('e2e-spring-cohort');
+  const visitorGroup = await creator.visitGroup(slug);
   const counts = await visitorGroup.memberAndMixtapeCounts();
   expect(counts.members).toBe(2);
 });

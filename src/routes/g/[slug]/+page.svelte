@@ -43,7 +43,7 @@
       <p class="mt-2 text-sm text-ink-muted">{data.group.description}</p>
     {/if}
     {#if data.isMember}
-      <p class="mt-2 text-xs text-ink-muted">
+      <p class="mt-2 text-xs text-ink-muted" data-testid="group-meta">
         {data.memberCount} {data.memberCount === 1 ? 'member' : 'members'} · {data.activeMixtapeCount} {data.activeMixtapeCount === 1 ? 'mixtape' : 'mixtapes'}
       </p>
     {/if}
@@ -82,6 +82,8 @@
       {#each data.mixtapes as mt (mt.handle)}
         <a
           href="/{mt.handle}"
+          data-testid="member-card"
+          data-handle={mt.handle}
           class="flex items-baseline justify-between gap-4 border-b border-rule py-3 hover:text-accent"
         >
           <div>
@@ -136,7 +138,7 @@
       {:else}
         <ul class="mt-3 space-y-3">
           {#each data.invites as inv (inv.id)}
-            <li class="rounded-md border border-rule bg-paper p-3">
+            <li class="rounded-md border border-rule bg-paper p-3" data-testid="invite-row" data-invite-code={inv.code}>
               <div class="flex items-baseline justify-between gap-3">
                 <code class="text-sm text-ink">{inv.code}</code>
                 <form method="POST" action="?/revokeInvite" use:enhance>
@@ -146,7 +148,7 @@
                   </button>
                 </form>
               </div>
-              <p class="mt-1 break-all text-xs text-ink-muted">{inviteUrl(inv.code)}</p>
+              <p class="mt-1 break-all text-xs text-ink-muted" data-testid="invite-url">{inviteUrl(inv.code)}</p>
               <p class="mt-1 text-xs text-ink-muted">
                 {#if inv.expiresAt}Expires {new Date(inv.expiresAt).toLocaleDateString()}{:else}No expiry{/if}
                 ·

@@ -5,7 +5,7 @@
 
 import { test, expect } from '../fixtures/test';
 
-test.skip('the public page exposes the right OG metadata', async ({ creator }) => {
+test('the public page exposes the right OG metadata', async ({ creator }) => {
   await creator.mixtape.addSongsByList(['Such Great Heights - The Postal Service']);
   await creator.mixtape.open();
 
@@ -29,7 +29,7 @@ test.skip('the public page exposes the right OG metadata', async ({ creator }) =
   expect(ogImage).toMatch(/\.png$/);
 });
 
-test.skip('share button is reachable from the public page', async ({ creator }) => {
+test('share button is reachable from the public page', async ({ creator }) => {
   await creator.mixtape.addSongsByList(['Imagine - John Lennon']);
   await creator.mixtape.open();
 

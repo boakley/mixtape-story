@@ -4,9 +4,11 @@
 // removes it.
 
 import { test, expect } from '../fixtures/test';
+import { workerGroupSlug } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 
-test.skip('a member shares and unshares their mixtape', async ({ creator }) => {
+test('a member shares and unshares their mixtape', async ({ creator }) => {
+  const slug = workerGroupSlug('share-circle');
   // Seed the creator's mixtape with two songs.
   await creator.mixtape.addSongsByList([
     'Wish You Were Here - Pink Floyd',
@@ -15,7 +17,7 @@ test.skip('a member shares and unshares their mixtape', async ({ creator }) => {
 
   // Steward creates a group; lands on the empty directory.
   const group = await createGroup(creator.page, {
-    slug: 'e2e-share-circle',
+    slug,
     name: 'E2E Share Circle'
   });
   expect((await group.memberAndMixtapeCounts()).mixtapes).toBe(0);

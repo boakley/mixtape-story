@@ -12,8 +12,13 @@ import { fetchMagicLinkFor } from '../fixtures/mailpit';
 test('a brand-new visitor signs in via magic link', async ({ page }) => {
   const email = `newcomer-${Date.now()}@e2e.local`;
 
-  // Step 1: type email into the login form.
+  // Step 1: type email into the login form. Wait for hydration so the
+  // form's use:enhance directive is wired up before we click — without
+  // this, an early click does a traditional POST navigation whose
+  // response Playwright's waitForResponse predicate sometimes misses
+  // under load.
   await page.goto('/login');
+  await page.waitForLoadState('networkidle');
   await page.locator('input[name="email"]').fill(email);
 
   // Step 2: submit and wait for the form-action response specifically.

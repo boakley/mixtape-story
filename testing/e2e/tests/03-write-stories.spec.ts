@@ -4,7 +4,7 @@
 
 import { test, expect } from '../fixtures/test';
 
-test.skip('a creator writes a story for a song', async ({ creator }) => {
+test('a creator writes a story for a song', async ({ creator }) => {
   // Seed: one song to attach a story to.
   await creator.mixtape.addSongsByList(['Such Great Heights - The Postal Service']);
 

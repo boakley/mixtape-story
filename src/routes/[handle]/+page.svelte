@@ -167,7 +167,7 @@
 
     <div class="mt-2 flex items-center justify-between gap-4">
       <div>
-        <p class="text-sm text-ink-muted">
+        <p class="text-sm text-ink-muted" data-testid="mixtape-meta">
           {data.songs.length} songs{yearRange ? ` · ${yearRange}` : ''}
         </p>
         {#if isOwner && data.visitorCount !== null}
