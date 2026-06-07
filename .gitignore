@@ -48,6 +48,13 @@ vite.config.ts.timestamp-*
 # Test coverage
 coverage/
 
+# Playwright artifacts (HTML report, traces, videos, screenshots).
+# Everything Playwright writes lives under testing/e2e/results — safe
+# to rm -rf without touching any tests, fixtures, or page objects.
+testing/e2e/results/
+# Playwright's internal browser-install cache (separate from results)
+playwright/.cache/
+
 # Supabase local stack
 supabase/.branches/
 supabase/.temp/
@@ -55,3 +62,5 @@ supabase/.temp/
 # Local caches
 .cache/
 .fastembed_cache/
+test-results/
+testing/results/

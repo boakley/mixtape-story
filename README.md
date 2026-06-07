@@ -157,3 +157,17 @@ flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
   gated by the `ADMIN_EMAILS` env var — comma-separated, lowercase-compared. Set it
   via `wrangler pages secret put ADMIN_EMAILS` for production and in `.env.local`
   for dev.
+
+## Testing
+
+The test suite is organized as the executable version of the v1 user journey —
+read top-to-bottom, the `e2e/` directory is a narrated tour of the product.
+
+```sh
+pnpm run test:unit       # Vitest: fast, no browser
+pnpm run test:e2e        # Playwright (headed locally so you can watch)
+pnpm run test:e2e:ui     # Playwright UI mode for debugging
+```
+
+Philosophy, page-object design, fixtures, and the deliberate omissions live in
+[`docs/TESTING.md`](docs/TESTING.md).
