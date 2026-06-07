@@ -366,5 +366,99 @@ export const actions: Actions = {
       .eq('group_id', group.id);
 
     return { invite: { ok: true } };
+  },
+
+  // Steward edits the group description inline. Empty string is a valid
+  // value (clears the description). Capped at 500 chars to keep the
+  // landing header from turning into a wall of text.
+  editDescription: async ({ params, request, locals: { safeGetSession } }) => {
+    gate();
+    const { user } = await safeGetSession();
+    if (!user) throw redirect(303, '/login');
+
+    const admin = adminClient();
+
+    const { data: group } = await admin
+      .from('groups')
+      .select('id')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    if (!group) throw error(404, 'Group not found');
+
+    const { data: membership } = await admin
+      .from('group_memberships')
+      .select('role')
+      .eq('group_id', group.id)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+    if (membership?.role !== 'steward') {
+      return fail(403, { description: { error: 'Stewards only.' } });
+    }
+
+    const data = await request.formData();
+    const description = String(data.get('description') ?? '').trim();
+    if (description.length > 500) {
+      return fail(400, {
+        description: { value: description, error: 'Description must be 500 characters or fewer.' }
+      });
+    }
+
+    const { error: updateError } = await admin
+      .from('groups')
+      .update({ description })
+      .eq('id', group.id);
+    if (updateError) {
+      return fail(500, { description: { value: description, error: 'Could not save. Try again.' } });
+    }
+
+    return { description: { ok: true } };
+  },
+
+  // Steward edits the group name inline. Mostly a typo-correction escape
+  // hatch — the expected rate is roughly never, but a misspelling caught
+  // right after creation shouldn't force re-creating the group. Capped at
+  // 100 chars; non-empty.
+  editName: async ({ params, request, locals: { safeGetSession } }) => {
+    gate();
+    const { user } = await safeGetSession();
+    if (!user) throw redirect(303, '/login');
+
+    const admin = adminClient();
+
+    const { data: group } = await admin
+      .from('groups')
+      .select('id')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    if (!group) throw error(404, 'Group not found');
+
+    const { data: membership } = await admin
+      .from('group_memberships')
+      .select('role')
+      .eq('group_id', group.id)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+    if (membership?.role !== 'steward') {
+      return fail(403, { name: { error: 'Stewards only.' } });
+    }
+
+    const data = await request.formData();
+    const name = String(data.get('name') ?? '').trim();
+    if (!name) {
+      return fail(400, { name: { value: name, error: 'Name can’t be empty.' } });
+    }
+    if (name.length > 100) {
+      return fail(400, { name: { value: name, error: 'Name must be 100 characters or fewer.' } });
+    }
+
+    const { error: updateError } = await admin
+      .from('groups')
+      .update({ name })
+      .eq('id', group.id);
+    if (updateError) {
+      return fail(500, { name: { value: name, error: 'Could not save. Try again.' } });
+    }
+
+    return { name: { ok: true } };
   }
 };
