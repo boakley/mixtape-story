@@ -72,6 +72,59 @@ test('a member shares and unshares their mixtape', async ({ creator }) => {
 
 This layer does the real architectural work, and it is reusable by more than tests. The product is described once, in domain terms; tests are the first consumer, not the only possible one. A marketing or training video is driven by the same page objects: slower, with realistic seed data, but the same vocabulary. No single test ever does double duty as a video, but the framework underneath serves both. A future screenshot-for-docs script would be a third consumer of the same interface. Page objects here are not a convenience for making tests pass; they are a reusable, domain-shaped interface to the product.
 
+## Tags
+
+Tests are tagged on two dimensions so the suite can be sliced by feature area or by user role. Tags follow a `key:value` namespace (Playwright requires the leading `@`):
+
+- **`@feature:…`** — what part of the product the test exercises. Current values: `auth`, `editor`, `public`, `group`, `invite`, `og`.
+- **`@role:…`** — what kind of user is walking the journey. Current values: `new-user`, `creator`, `steward`, `member`, `viewer`.
+
+A spec gets one or two tags per dimension. Multi-actor journeys (like 08-invite-and-join) carry tags for every actor that appears.
+
+```ts
+test('a steward invites someone; the invitee joins via magic link',
+  { tag: ['@feature:group', '@feature:invite', '@feature:auth',
+          '@role:steward', '@role:new-user'] },
+  async ({ creator, visitor }) => { … }
+);
+```
+
+Filter at run time:
+
+```sh
+pnpm exec playwright test --grep "@feature:group"   # everything group-related
+pnpm exec playwright test --grep "@feature:"        # every test with any feature tag
+pnpm exec playwright test --grep "@role:new-user"   # brand-new visitor journeys
+pnpm exec playwright test --grep-invert "@feature:auth"
+```
+
+### Why prefixes, not flat `@group` / `@steward`
+
+- **Slice by namespace, not just by value.** `--grep "@feature:"` matches any feature; impossible with flat tags.
+- **ReportPortal attributes for free.** RP's reporter splits on `:` into a filterable `feature=group` attribute; no extra config when the integration lands.
+- **Typo hygiene.** `grep -rE "@(role|feature):" testing/e2e/tests | sort -u` gives the full inventory in one line. Catches `@features:group` that flat tags would silently absorb.
+- **Future-proof.** Adding a third dimension later (`@priority:critical`, `@surface:mobile`) doesn't require renaming what's there.
+
+A two-dimension scheme is cheap to set up at 9 specs and meaningful refactor pain to add at 50. It's a small investment with the largest payoff when the suite grows or the reporting layer arrives — both of which are realistic, not hypothetical.
+
+### What we deliberately don't tag
+
+`@critical` / `@smoke`. At the suite's current size, the whole thing is the smoke test; that dimension earns its keep around 50+ specs. Add it then, not now.
+
+### Current tag map
+
+| Spec | Tags |
+|---|---|
+| 01-sign-in | `@feature:auth` `@role:new-user` |
+| 02-create-mixtape | `@feature:editor` `@role:creator` |
+| 03-write-stories | `@feature:editor` `@role:creator` |
+| 04-publish-and-share (OG) | `@feature:public` `@feature:og` `@role:creator` |
+| 04-publish-and-share (Share button) | `@feature:public` `@role:creator` |
+| 05-viewer-opens-mixtape | `@feature:public` `@role:viewer` |
+| 07-create-group | `@feature:group` `@role:steward` |
+| 08-invite-and-join | `@feature:group` `@feature:invite` `@feature:auth` `@role:steward` `@role:new-user` |
+| 09-share-mixtape-with-group | `@feature:group` `@role:member` |
+
 ## Authentication
 
 Magic-link auth is the hardest part of this app to make test-friendly, and the strategy is deliberate: prove the real path once, and don't make every other test walk it.
