@@ -13,7 +13,10 @@ export type FeatureKey = 'groups';
 
 const TRUTHY = new Set(['1', 'true', 'yes', 'on']);
 
-function isTruthy(value: string | undefined): boolean {
+// Exported for testability — the env-wiring below is one line, but the
+// parsing rule (case-insensitive, whitespace-tolerant, anything not in
+// the allowlist is false) is the part worth pinning down.
+export function isTruthy(value: string | undefined): boolean {
   if (!value) return false;
   return TRUTHY.has(value.trim().toLowerCase());
 }

@@ -17,6 +17,8 @@ freely.
   * can we add the ability to start with an actual apple music (or spotify?)
     playlist? Can we have a "play this playlist on apple music" link?
   * generate demos (stashed; largely working)
+  * I want to be able to add a description to my mixtape, and edit
+    the title, just like a group.
 * by default, e2e tests need to be headless. It should be trivial for me
   to run them headed with a command line switch or env var
 
@@ -54,3 +56,9 @@ freely.
   snippet — ~140 lines tightly coupled to page state). deferred
   until a second consumer exists (e.g. search results, a different
   tab). flagged so it doesn't get forgotten.
+* E2E test for the feature-off case — with `FEATURES_GROUPS` unset,
+  do `/g/create`, `/g/{slug}`, `/g/{slug}/i/{code}`, `/admin/groups`
+  all return 404? The unit test (features.test.ts) covers the
+  parser; an E2E pass would cover the gate-wiring on every route.
+  Probably needs a separate playwright config or env override
+  (the default config runs with FEATURES_GROUPS=1 from .env.local).
