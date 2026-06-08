@@ -52,6 +52,9 @@ coverage/
 # Everything Playwright writes lives under testing/e2e/results — safe
 # to rm -rf without touching any tests, fixtures, or page objects.
 testing/e2e/results/
+# The (stashed) demo POC writes its videos + ffmpeg composites here.
+# Same as above: rm -rf is safe; only artifacts live in results/.
+testing/e2e/demos/results/
 # Playwright's internal browser-install cache (separate from results)
 playwright/.cache/
 
