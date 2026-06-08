@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import PreviewButton from './PreviewButton.svelte';
   import { listenHref, type ListenPref } from '$lib/listen';
   import type { DisplaySong } from '$lib/types';
@@ -19,11 +20,38 @@
   //   row.
   // - Action-arrow convention (docs/design-language.md): underline the
   //   label only; the leading `→` glyph stays unstyled.
+  //
+  // First-visit hint (§3): the page passes initiallyExpanded + showHint
+  // for the first story-bearing row when the visitor hasn't dismissed
+  // the hint before. The hint sits below the story body, accent-colored,
+  // and disappears when the visitor interacts (toggle, listen, view).
+  // SongRow signals interactions via the onInteract callback.
 
-  type Props = { song: DisplaySong; view: 'expanded' | 'compact'; listenPref: ListenPref | null };
-  let { song, view, listenPref }: Props = $props();
+  type Props = {
+    song: DisplaySong;
+    view: 'expanded' | 'compact';
+    listenPref: ListenPref | null;
+    /** Seed the row's expanded state at mount. Only consulted once. */
+    initiallyExpanded?: boolean;
+    /** Render the one-line hint under the story (auto-opened first row). */
+    showHint?: boolean;
+    /** Called whenever the visitor interacts with this row's toggle or
+     *  Listen link — lets the page dismiss the first-visit hint. */
+    onInteract?: () => void;
+  };
+  let {
+    song,
+    view,
+    listenPref,
+    initiallyExpanded = false,
+    showHint = false,
+    onInteract
+  }: Props = $props();
 
-  let expandedInCompact = $state(false);
+  // `untrack` makes the "seed once, then user-controlled" intent
+  // explicit: the prop's value at mount sets the initial state, and
+  // subsequent prop changes don't override the visitor's clicks.
+  let expandedInCompact = $state(untrack(() => initiallyExpanded));
 
   const hasStory = $derived(song.storyText.trim().length > 0);
   // Story body visible when there is one AND we're in some open state.
@@ -60,8 +88,14 @@
   const listenUrl = $derived(listenHref(song, listenPref));
   const showPreviewInstead = $derived(!listenUrl && !!song.previewUrl);
 
-  function stopProp(e: MouseEvent): void {
+  function handleToggle(): void {
+    expandedInCompact = !expandedInCompact;
+    onInteract?.();
+  }
+
+  function handleListenClick(e: MouseEvent): void {
     e.stopPropagation();
+    onInteract?.();
   }
 </script>
 
@@ -90,7 +124,7 @@
       {#if hasStory}
         <button
           type="button"
-          onclick={() => (expandedInCompact = !expandedInCompact)}
+          onclick={handleToggle}
           aria-expanded={isExpanded}
           aria-controls={storyId}
           class="group flex w-full min-w-0 items-baseline gap-2 text-left"
@@ -173,6 +207,20 @@
           {@html song.storyHtml}
         </div>
       {/if}
+
+      <!-- First-visit hint: a one-line accent line attached to the
+           auto-opened first-story row. The page only sets showHint on
+           one row at a time, and clears it the moment the visitor
+           interacts (toggle, listen, view change). transition-opacity
+           gives a small fade when it disappears. -->
+      {#if showHint && view === 'compact'}
+        <p
+          class="mt-2 ml-5 text-xs text-accent transition-opacity duration-300"
+          data-testid="first-visit-hint"
+        >
+          tap any song to read its story
+        </p>
+      {/if}
       </div>
 
       <!-- Listen sits right-aligned in every state. The `→` glyph is
@@ -180,7 +228,7 @@
       {#if listenUrl}
         <a
           href={listenUrl}
-          onclick={stopProp}
+          onclick={handleListenClick}
           target="_blank"
           rel="noopener noreferrer"
           class="shrink-0 text-sm text-ink hover:text-accent"

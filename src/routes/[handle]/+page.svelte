@@ -50,6 +50,36 @@
     'compact',
     (raw) => (raw === 'expanded' || raw === 'compact' ? raw : undefined)
   );
+
+  // First-visit auto-open + hint. On a visitor's first time on any
+  // mixtape page (per device — localStorage), we auto-open the first
+  // song that has a story and attach a one-line hint. The marker
+  // persists globally rather than per-handle: once a visitor's been
+  // shown the gesture on any mixtape, they don't need to be taught
+  // again. Dismissal triggers on any toggle, Listen tap, or view-mode
+  // change — all of which mean the visitor "got it."
+  const hasHinted = useStoredState<boolean>(
+    'mixtapestory:hinted',
+    false,
+    (raw) => (raw === 'true' ? true : raw === 'false' ? false : undefined)
+  );
+
+  // Index of the first song with non-empty story text, or -1 if none.
+  // Drives both auto-open and hint placement.
+  const firstStoryIdx = $derived(
+    data.songs.findIndex((s) => s.storyText.trim().length > 0)
+  );
+
+  // Auto-open + hint are only meaningful in compact view. In expanded
+  // view every story is already visible — nothing to teach.
+  const showAutoHint = $derived(
+    !hasHinted.value && firstStoryIdx !== -1 && view.value === 'compact'
+  );
+
+  function dismissHint(): void {
+    if (!hasHinted.value) hasHinted.value = true;
+  }
+
   let qrOpen = $state(false);
 
   const mixtapeUrl = $derived(`https://mixtapestory.com/${data.handle}`);
@@ -298,7 +328,15 @@
           > · {data.visitorCount}
             {data.visitorCount === 1 ? 'visitor' : 'visitors'}</span>{/if}
       </p>
-      <ViewToggle bind:view={view.value} />
+      <ViewToggle
+        bind:view={
+          () => view.value,
+          (v) => {
+            view.value = v;
+            dismissHint();
+          }
+        }
+      />
     </div>
   </header>
 
@@ -309,8 +347,15 @@
   {#if data.songs.length === 0}
     <p class="text-ink-muted">No songs yet.</p>
   {:else}
-    {#each data.songs as song (song.id)}
-      <SongRow {song} view={view.value} {listenPref} />
+    {#each data.songs as song, i (song.id)}
+      <SongRow
+        {song}
+        view={view.value}
+        {listenPref}
+        initiallyExpanded={showAutoHint && i === firstStoryIdx}
+        showHint={showAutoHint && i === firstStoryIdx}
+        onInteract={dismissHint}
+      />
     {/each}
   {/if}
 
