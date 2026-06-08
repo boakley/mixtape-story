@@ -16,10 +16,10 @@ test('a creator creates a group and lands as steward', async ({ creator }) => {
   // Step 1: the landing header reflects the new group.
   await expect(group.title()).toHaveText('E2E Writing Circle');
 
-  // Step 2: the steward panel is visible to the creator.
-  await expect(
-    creator.page.getByRole('heading', { name: /steward · invite codes/i })
-  ).toBeVisible();
+  // Step 2: the steward panel is visible to the creator (collapsed by
+  // default since the rewrite; we just assert it's there).
+  await expect(group.stewardSectionToggle()).toBeVisible();
+  await expect(group.stewardSectionToggle()).toHaveAttribute('aria-expanded', 'false');
 
   // Step 3: the meta line shows them as the only member with 0 mixtapes
   // (they haven't shared yet).

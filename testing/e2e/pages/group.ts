@@ -46,11 +46,11 @@ export class Group {
 
   /**
    * Mint a new invite code via the steward panel and return its full URL.
-   * Stewards only; throws if the panel isn't visible.
+   * Stewards only; throws if the panel isn't visible. Expands the
+   * steward section first if it's collapsed (default state).
    */
   async mintInvite(code: string): Promise<string> {
-    const panel = this.page.getByRole('heading', { name: /steward · invite codes/i });
-    await panel.waitFor({ state: 'visible' });
+    await this.expandStewardSection();
     await this.page.locator('input[name="code"]').fill(code);
     await this.page.getByRole('button', { name: /mint invite/i }).click();
     // The new row carries data-invite-code on the <li> and a nested
@@ -65,6 +65,122 @@ export class Group {
   /** Locator for a member mixtape card by handle. */
   memberCard(handle: string): Locator {
     return this.page.locator(`[data-testid="member-card"][data-handle="${handle}"]`);
+  }
+
+  // ── Tabs ────────────────────────────────────────────────────────────
+
+  /** The named tab in the group view tablist. */
+  tab(name: 'Member mixtapes' | 'Songs we share' | 'All songs'): Locator {
+    return this.page.getByRole('tab', { name });
+  }
+
+  /** Click a tab. Awaits the localStorage write side effect by a tiny tick. */
+  async switchTab(name: 'Member mixtapes' | 'Songs we share' | 'All songs'): Promise<void> {
+    await this.tab(name).click();
+  }
+
+  /** Name of the currently-selected tab (the one with aria-selected="true"). */
+  async activeTabName(): Promise<string | null> {
+    const names: Array<'Member mixtapes' | 'Songs we share' | 'All songs'> = [
+      'Member mixtapes',
+      'Songs we share',
+      'All songs'
+    ];
+    for (const n of names) {
+      if ((await this.tab(n).getAttribute('aria-selected')) === 'true') return n;
+    }
+    return null;
+  }
+
+  // ── View toggle (visible on Songs we share + All songs) ────────────
+
+  /** The Expanded/Compact pill container's two buttons. */
+  viewButton(name: 'Expanded' | 'Compact'): Locator {
+    return this.page.getByRole('button', { name, exact: true });
+  }
+
+  async setView(view: 'expanded' | 'compact'): Promise<void> {
+    await this.viewButton(view === 'expanded' ? 'Expanded' : 'Compact').click();
+  }
+
+  // ── Song rows ──────────────────────────────────────────────────────
+
+  /** Locator for a song entry by its title (works in either view). */
+  songRow(title: string): Locator {
+    return this.page.locator(`[data-testid="song-entry"][data-song-title="${title}"]`);
+  }
+
+  /** Click a compact-mode song to toggle its stories visible. */
+  async expandSongInCompact(title: string): Promise<void> {
+    const row = this.songRow(title);
+    // The clickable trigger in compact mode is the button wrapping the
+    // title (it has aria-expanded). Scope by title to disambiguate.
+    await row.getByRole('button', { expanded: false }).first().click();
+  }
+
+  /** Locator for the [more]/[less] toggle inside a song's story body. */
+  storyMoreToggle(title: string): Locator {
+    return this.songRow(title).getByRole('button', { name: /\[(more|less)\]/i });
+  }
+
+  // ── Steward section collapse ────────────────────────────────────────
+
+  /** The collapsible steward-section header button. */
+  stewardSectionToggle(): Locator {
+    return this.page.getByRole('button', { name: /^Steward · /i });
+  }
+
+  /** The body region (form + invites list) inside the collapsible section. */
+  stewardSectionBody(): Locator {
+    return this.page.locator('#steward-section-body');
+  }
+
+  async expandStewardSection(): Promise<void> {
+    const toggle = this.stewardSectionToggle();
+    await toggle.waitFor({ state: 'visible' });
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') {
+      await toggle.click();
+      await this.stewardSectionBody().waitFor({ state: 'visible' });
+    }
+  }
+
+  async collapseStewardSection(): Promise<void> {
+    const toggle = this.stewardSectionToggle();
+    if ((await toggle.getAttribute('aria-expanded')) === 'true') {
+      await toggle.click();
+    }
+  }
+
+  // ── Inline name + description editing ──────────────────────────────
+
+  async editName(newName: string): Promise<void> {
+    await this.page.getByRole('button', { name: /edit group name/i }).click();
+    const input = this.page.locator('#group-name-edit');
+    await input.fill(newName);
+    await this.page.getByRole('button', { name: 'Save', exact: true }).click();
+    // The form is dismissed and the <h1> reappears with the new name —
+    // wait for that as the success signal.
+    await this.page.getByRole('heading', { level: 1, name: newName }).waitFor();
+  }
+
+  async editDescription(newDescription: string): Promise<void> {
+    await this.page.getByRole('button', { name: /edit description/i }).click();
+    const textarea = this.page.locator('#group-description-edit');
+    await textarea.fill(newDescription);
+    await this.page.getByRole('button', { name: 'Save', exact: true }).click();
+    await this.page.getByText(newDescription, { exact: false }).first().waitFor();
+  }
+
+  // ── HelpTip (?) ─────────────────────────────────────────────────────
+
+  /** Click a HelpTip by its labelled trigger ("Help: {label}"). */
+  async openHelpTip(label: string): Promise<void> {
+    await this.page.getByRole('button', { name: `Help: ${label}` }).click();
+  }
+
+  /** The currently-open tooltip body (only one is open at a time). */
+  openTooltip(): Locator {
+    return this.page.getByRole('tooltip');
   }
 }
 
