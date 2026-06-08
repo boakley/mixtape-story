@@ -1,8 +1,11 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
+  import ListenWithChip from '$lib/components/ListenWithChip.svelte';
+  import HelpTip from '$lib/components/HelpTip.svelte';
+  import { listenHref, type ListenPref } from '$lib/listen';
   import type { ActionData, PageData } from './$types';
 
   type Props = { data: PageData; form: ActionData };
@@ -54,6 +57,16 @@
   // personal mixtape page means a toggle on either page carries to both.
   let view = $state<View>('compact');
 
+  // Visitor "Listen with" preference. Same pattern as the personal page:
+  // seed from server-read cookie so SSR hrefs and chip active state match
+  // on first paint; re-sync via $effect on navigation; the ListenWithChip
+  // component handles the cookie write on click. listenHref(song, listenPref)
+  // routes each → Listen accordingly.
+  let listenPref = $state<ListenPref | null>(untrack(() => data.viewerPref));
+  $effect(() => {
+    listenPref = data.viewerPref;
+  });
+
   // In compact view, individual songs can be expanded in-place by
   // clicking the title row (matches the personal-page SongRow pattern).
   let expandedSongsInCompact = $state(new Set<string>());
@@ -63,6 +76,32 @@
     if (next.has(key)) next.delete(key);
     else next.add(key);
     expandedSongsInCompact = next;
+  }
+
+  // Steward section is collapsed by default — the manage UI is task-
+  // oriented and irrelevant most of the time the steward visits the
+  // page. State persists in localStorage so a steward who routinely
+  // wants it open doesn't have to re-expand on every visit. This whole
+  // section will move to /g/{slug}/manage eventually (per the phase
+  // plan); the collapse is a stopgap.
+  let stewardOpen = $state(false);
+  const STEWARD_STORAGE_KEY = 'mixtapestory:steward-open';
+
+  $effect(() => {
+    try {
+      if (localStorage.getItem(STEWARD_STORAGE_KEY) === 'true') stewardOpen = true;
+    } catch {
+      // private mode — leave default closed
+    }
+  });
+
+  function toggleStewardSection(): void {
+    stewardOpen = !stewardOpen;
+    try {
+      localStorage.setItem(STEWARD_STORAGE_KEY, String(stewardOpen));
+    } catch {
+      // ignore
+    }
   }
 
   // "Songs we share" filter: songs picked by 2+ distinct contributors.
@@ -375,7 +414,8 @@
               href="/{mt.handle}"
               data-testid="member-card"
               data-handle={mt.handle}
-              class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 border-b border-rule hover:text-accent"
+              title="Open {mt.displayName}'s mixtape"
+              class="group grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 border-b border-rule"
             >
               <div class="relative" aria-hidden="true">
                 <span
@@ -386,8 +426,12 @@
                 ></span>
               </div>
               <div class="py-2">
-                <div class="flex items-baseline justify-between gap-4">
-                  <span class={mt.songCount === 0 ? 'italic text-ink-muted' : 'text-ink'}>
+                <div class="flex items-baseline justify-between gap-3">
+                  <span
+                    class={mt.songCount === 0
+                      ? 'italic text-ink-muted group-hover:text-accent'
+                      : 'text-ink group-hover:text-accent'}
+                  >
                     <span class="text-base">{mt.displayName}'s mixtape</span>
                     {#if mt.songCount > 0}
                       <span class="ml-1.5 text-xs text-ink-muted">
@@ -395,7 +439,15 @@
                       </span>
                     {/if}
                   </span>
-                  <span class="shrink-0 text-xs text-ink-muted">{timeAgo(mt.updatedAt)}</span>
+                  <span class="flex shrink-0 items-baseline gap-2">
+                    <span class="text-xs text-ink-muted">{timeAgo(mt.updatedAt)}</span>
+                    <span
+                      class="text-sm text-ink-muted transition-colors group-hover:text-accent"
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
+                  </span>
                 </div>
                 {#if mt.songCount === 0 && mt.isViewer}
                   <p class="mt-0.5 text-xs italic text-ink-muted">
@@ -440,7 +492,9 @@
             {sharedSongs.length === 1 ? 'song' : 'songs'} picked by two or more of you.
           </p>
           <ViewToggle bind:view />
-
+        </div>
+        <div class="mt-2">
+          <ListenWithChip bind:listenPref />
         </div>
         <div class="mt-2">
           {#each sharedSongs as song (song.dedupKey)}
@@ -459,7 +513,9 @@
             Every song picked by the group · newest first.
           </p>
           <ViewToggle bind:view />
-
+        </div>
+        <div class="mt-2">
+          <ListenWithChip bind:listenPref />
         </div>
         <div class="mt-2">
           {#each data.songs as song (song.dedupKey)}
@@ -472,7 +528,10 @@
 
   {#snippet songEntry(song: PageData['songs'][number])}
     {@const showStories = view === 'expanded' || expandedSongsInCompact.has(song.dedupKey)}
+    {@const songListenUrl = listenHref(song, listenPref)}
     <article
+      data-testid="song-entry"
+      data-song-title={song.title}
       class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 {view === 'compact'
         ? 'py-1'
         : 'py-4 sm:py-5'}"
@@ -535,9 +594,9 @@
                 </svg>
               </span>
             </button>
-            {#if song.songlinkUrl}
+            {#if songListenUrl}
               <a
-                href={song.songlinkUrl}
+                href={songListenUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
@@ -549,9 +608,9 @@
         {:else}
           <div class="flex items-baseline justify-between gap-3">
             <h3 class="min-w-0 flex-1 text-xl leading-tight text-ink sm:text-2xl">{song.title}</h3>
-            {#if song.songlinkUrl}
+            {#if songListenUrl}
               <a
-                href={song.songlinkUrl}
+                href={songListenUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
@@ -605,13 +664,48 @@
   {/snippet}
 
   {#if data.isSteward}
-    <section class="mt-10 rounded-md border border-rule bg-paper p-5">
-      <h2 class="text-xs uppercase tracking-wider text-ink-muted">Steward · Invite codes</h2>
+    <section class="mt-10 rounded-md border border-rule bg-paper">
+      <button
+        type="button"
+        onclick={toggleStewardSection}
+        aria-expanded={stewardOpen}
+        aria-controls="steward-section-body"
+        class="group flex w-full items-center justify-between gap-3 rounded-t-md px-5 py-3 text-left hover:bg-rule/20 {stewardOpen
+          ? ''
+          : 'rounded-b-md'}"
+      >
+        <span class="text-xs uppercase tracking-wider text-ink-muted">
+          Steward · {data.invites.length === 0
+            ? 'No active invite codes'
+            : `${data.invites.length} active invite ${data.invites.length === 1 ? 'code' : 'codes'}`}
+        </span>
+        <span
+          class="text-ink-muted transition-transform group-hover:text-accent {stewardOpen
+            ? 'rotate-90'
+            : ''}"
+          aria-hidden="true"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="4 2 10 7 4 12" />
+          </svg>
+        </span>
+      </button>
 
-      {#if data.invites.length === 0}
-        <p class="mt-3 text-sm text-ink-muted">No active invite codes yet.</p>
-      {:else}
-        <ul class="mt-3 space-y-3">
+      {#if stewardOpen}
+        <div id="steward-section-body" class="border-t border-rule px-5 pb-5 pt-4">
+          {#if data.invites.length === 0}
+            <p class="text-sm text-ink-muted">No active invite codes yet.</p>
+          {:else}
+        <ul class="space-y-3">
           {#each data.invites as inv (inv.id)}
             <li class="rounded-md border border-rule bg-paper p-3" data-testid="invite-row" data-invite-code={inv.code}>
               <div class="flex items-baseline justify-between gap-3">
@@ -636,7 +730,14 @@
 
       <form method="POST" action="?/createInvite" use:enhance class="mt-4 space-y-3">
         <label class="block">
-          <span class="text-xs uppercase tracking-wider text-ink-muted">Code</span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="text-xs uppercase tracking-wider text-ink-muted">Code</span>
+            <HelpTip label="Code">
+              A short label members type to join — like "spring2026" or
+              "kitchen-table". Lowercase letters, digits, and hyphens;
+              4–32 characters.
+            </HelpTip>
+          </span>
           <input
             type="text"
             name="code"
@@ -652,7 +753,13 @@
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
-            <span class="text-xs uppercase tracking-wider text-ink-muted">Expires in (days)</span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="text-xs uppercase tracking-wider text-ink-muted">Expires in (days)</span>
+              <HelpTip label="Expires in (days)">
+                How long this code stays valid. Leave blank for no expiry.
+                Max 365 days.
+              </HelpTip>
+            </span>
             <input
               type="number"
               name="expires_in_days"
@@ -664,7 +771,13 @@
             />
           </label>
           <label class="block">
-            <span class="text-xs uppercase tracking-wider text-ink-muted">Use cap</span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="text-xs uppercase tracking-wider text-ink-muted">Use cap</span>
+              <HelpTip label="Use cap">
+                Maximum number of people who can redeem this code. Leave
+                blank for unlimited. Max 1000.
+              </HelpTip>
+            </span>
             <input
               type="number"
               name="uses_cap"
@@ -685,6 +798,8 @@
           Mint invite
         </button>
       </form>
+        </div>
+      {/if}
     </section>
   {/if}
 

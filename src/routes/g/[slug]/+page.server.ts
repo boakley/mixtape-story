@@ -3,6 +3,8 @@ import { isFeatureEnabled } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
 import { renderStory } from '$lib/server/markdown';
 import { truncateStory, normalizeSongKey } from '$lib/server/story-truncate';
+import { LISTEN_PREF_COOKIE, isListenPref, type ListenPref } from '$lib/listen';
+import type { PlatformLinks } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
 // The group landing page. Anyone can see name + description; only members
@@ -55,17 +57,25 @@ type AggregatedSong = {
   artist: string | null;
   album: string | null;
   songlinkUrl: string | null;
+  linksByPlatform: PlatformLinks | null;
   contributors: SongContributor[];
   newestAddedAt: string;
 };
 
 const CODE_RE = /^[a-z0-9][a-z0-9-]{2,30}[a-z0-9]$/;
 
-export const load: PageServerLoad = async ({ params, locals: { safeGetSession } }) => {
+export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetSession } }) => {
   gate();
 
   const { user } = await safeGetSession();
   const admin = adminClient();
+
+  // Visitor "Listen with" preference, read from the same cookie the
+  // personal mixtape page uses. Carries the visitor's choice across
+  // pages (cookie is path=/), so a steward who set Apple Music there
+  // gets Apple Music deep-links here too.
+  const rawPref = cookies.get(LISTEN_PREF_COOKIE);
+  const viewerPref: ListenPref | null = isListenPref(rawPref) ? rawPref : null;
 
   // Group lookup. service_role because we want to distinguish "exists" from
   // "you can't see it" — the RLS allows anyone to SELECT groups, but this
@@ -139,7 +149,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
           id, profile_id, updated_at,
           profile:profiles!inner ( handle, display_name ),
           songs:songs (
-            id, title, artist, album, isrc, songlink_url,
+            id, title, artist, album, isrc, songlink_url, links_by_platform,
             memory_year, added_at,
             stories ( text )
           )
@@ -154,6 +164,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
       album: string | null;
       isrc: string | null;
       songlink_url: string | null;
+      links_by_platform: PlatformLinks | null;
       memory_year: number | null;
       added_at: string;
       stories: { text: string }[] | { text: string } | null;
@@ -212,6 +223,9 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
             existing.newestAddedAt = contributor.addedAt;
           }
           if (!existing.songlinkUrl && song.songlink_url) existing.songlinkUrl = song.songlink_url;
+          if (!existing.linksByPlatform && song.links_by_platform) {
+            existing.linksByPlatform = song.links_by_platform;
+          }
           if (!existing.album && song.album) existing.album = song.album;
         } else {
           byKey.set(key, {
@@ -220,6 +234,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
             artist: song.artist,
             album: song.album,
             songlinkUrl: song.songlink_url,
+            linksByPlatform: song.links_by_platform,
             contributors: [contributor],
             newestAddedAt: contributor.addedAt
           });
@@ -274,6 +289,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
     mixtapes,
     activeMixtapeCount,
     songs: aggregatedSongs,
+    viewerPref,
     viewerHasGroupMixtape,
     viewerHasPersonalMixtape,
     invites
