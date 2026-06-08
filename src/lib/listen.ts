@@ -1,8 +1,18 @@
 import type { DisplaySong } from './types';
 
-// A visitor's preferred streaming service for the "Listen with" chip.
-// `null` means no preference — fall back to the universal Odesli page.
-export type ListenPref = 'apple' | 'spotify' | 'youtube';
+// A visitor's preferred streaming service for the "Listen with" choice.
+//
+// - 'apple' | 'spotify' | 'youtube' → deep-link to that service.
+// - 'other' → user picked the Odesli chooser page explicitly (so we
+//   know not to re-prompt with the first-Listen modal).
+// - `null` → no preference set yet. First Listen tap on the mixtape
+//   page pops the chooser modal.
+export type ListenPref = 'apple' | 'spotify' | 'youtube' | 'other';
+
+// Type for the subset of ListenPref values that have an actual
+// deep-linkable service entry in LISTEN_SERVICES below. 'other' is a
+// pref but not a service — it routes to Odesli, same as null.
+export type ListenService = Exclude<ListenPref, 'other'>;
 
 export const LISTEN_PREF_COOKIE = 'mxs_listen_pref';
 
@@ -19,7 +29,7 @@ type ServiceConfig = {
   searchUrl: (query: string) => string;
 };
 
-export const LISTEN_SERVICES: Record<ListenPref, ServiceConfig> = {
+export const LISTEN_SERVICES: Record<ListenService, ServiceConfig> = {
   apple: {
     label: 'Apple',
     tooltip: 'Open songs in Apple Music',
@@ -44,7 +54,29 @@ export const OTHER_LISTEN_TOOLTIP =
   'Open a universal link where you pick your app';
 
 export function isListenPref(value: string | null | undefined): value is ListenPref {
-  return value === 'apple' || value === 'spotify' || value === 'youtube';
+  return (
+    value === 'apple' ||
+    value === 'spotify' ||
+    value === 'youtube' ||
+    value === 'other'
+  );
+}
+
+/**
+ * Set or clear the LISTEN_PREF_COOKIE in document.cookie. Single source
+ * of truth so the ListenChooser modal and ListenWithChip both go
+ * through the same write — no drift on max-age, samesite, etc.
+ *
+ * Pass null to clear (e.g. "reset to no preference" from settings, if
+ * we ever add that). Routine writes pass an actual ListenPref.
+ */
+export function writeListenPrefCookie(pref: ListenPref | null): void {
+  if (typeof document === 'undefined') return;
+  if (pref) {
+    document.cookie = `${LISTEN_PREF_COOKIE}=${pref}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  } else {
+    document.cookie = `${LISTEN_PREF_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  }
 }
 
 type SongLike = Pick<DisplaySong, 'title' | 'artist' | 'songlinkUrl' | 'linksByPlatform'>;
@@ -61,7 +93,9 @@ type SongLike = Pick<DisplaySong, 'title' | 'artist' | 'songlinkUrl' | 'linksByP
  *   still pending resolution.
  */
 export function listenHref(song: SongLike, pref: ListenPref | null): string | null {
-  if (!pref) return song.songlinkUrl;
+  // 'other' = user explicitly chose the Odesli chooser. Same destination
+  // as no-preference, but it stops the first-Listen modal from popping.
+  if (!pref || pref === 'other') return song.songlinkUrl;
 
   const svc = LISTEN_SERVICES[pref];
   const direct = song.linksByPlatform?.[svc.platformKey]?.url;

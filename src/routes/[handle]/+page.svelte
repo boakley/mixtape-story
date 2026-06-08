@@ -6,7 +6,9 @@
   import QrDialog from '$lib/components/QrDialog.svelte';
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
   import InlineEdit from '$lib/components/InlineEdit.svelte';
-  import { type ListenPref } from '$lib/listen';
+  import ListenChooser from '$lib/components/ListenChooser.svelte';
+  import { listenHref, writeListenPrefCookie, type ListenPref } from '$lib/listen';
+  import type { DisplaySong } from '$lib/types';
   import { useStoredState } from '$lib/use-stored-state.svelte';
   import type { ActionData, PageData } from './$types';
 
@@ -84,15 +86,61 @@
 
   const mixtapeUrl = $derived(`https://mixtapestory.com/${data.handle}`);
 
-  // Visitor "Listen with" preference. Seeded from the server-read cookie (so
-  // SSR hrefs and the chip's active state match on first paint), then updated
-  // client-side via the ListenWithChip component (which owns the cookie
-  // write). The $effect re-syncs when the server value changes (e.g.,
-  // navigating between mixtapes); a local click doesn't change
-  // data.viewerPref so it won't be clobbered.
+  // Visitor "Listen with" preference. Seeded from the server-read cookie
+  // (so SSR hrefs match on first paint), then updated client-side by
+  // the chooser modal (which writes the cookie via writeListenPrefCookie).
+  // The $effect re-syncs when the server value changes (e.g., navigating
+  // between mixtapes); a local click doesn't change data.viewerPref so
+  // it won't be clobbered.
   let listenPref = $state<ListenPref | null>(untrack(() => data.viewerPref));
   $effect(() => {
     listenPref = data.viewerPref;
+  });
+
+  // First-Listen chooser modal. Pops when the visitor taps a Listen
+  // link with no stored preference, or when they explicitly pick
+  // "Listen with" from the ☰ menu (?listen=set query param).
+  let showListenChooser = $state(false);
+  // The song the visitor was trying to listen to when the modal popped.
+  // After they pick a service, we open that song's per-service URL in
+  // a new tab. null when the modal was triggered from the menu (no
+  // pending song — just set the preference).
+  let pendingListenSong: DisplaySong | null = $state(null);
+
+  function handleListenAttempt(song: DisplaySong): boolean {
+    if (listenPref) return false; // Already chose, let the click navigate.
+    pendingListenSong = song;
+    showListenChooser = true;
+    return true; // Intercept — SongRow will preventDefault.
+  }
+
+  function handleListenPick(pref: ListenPref): void {
+    writeListenPrefCookie(pref);
+    listenPref = pref;
+    if (pendingListenSong) {
+      const url = listenHref(pendingListenSong, pref);
+      if (url && typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      pendingListenSong = null;
+    }
+  }
+
+  // Layout ☰ "Listen with" item routes to /{handle}?listen=set. Watch
+  // for it and pop the modal (no pending song — just pref-setting).
+  // On modal close we strip the param so a refresh doesn't re-open.
+  $effect(() => {
+    if (page.url.searchParams.get('listen') === 'set') {
+      pendingListenSong = null;
+      showListenChooser = true;
+    }
+  });
+  $effect(() => {
+    if (!showListenChooser && page.url.searchParams.get('listen') === 'set') {
+      const url = new URL(page.url);
+      url.searchParams.delete('listen');
+      goto(url.pathname + url.search, { replaceState: true, noScroll: true });
+    }
   });
 
   const yearRange = $derived.by(() => {
@@ -344,6 +392,8 @@
     <QrDialog url={mixtapeUrl} title={mixtapeTitle} onClose={closeQr} />
   {/if}
 
+  <ListenChooser bind:open={showListenChooser} onPick={handleListenPick} />
+
   {#if data.songs.length === 0}
     <p class="text-ink-muted">No songs yet.</p>
   {:else}
@@ -355,6 +405,7 @@
         initiallyExpanded={showAutoHint && i === firstStoryIdx}
         showHint={showAutoHint && i === firstStoryIdx}
         onInteract={dismissHint}
+        onListenAttempt={handleListenAttempt}
       />
     {/each}
   {/if}

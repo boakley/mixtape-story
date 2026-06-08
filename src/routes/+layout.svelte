@@ -146,6 +146,19 @@
             QR code
           </a>
         {/if}
+        {#if isMixtapeView}
+          <!-- "Listen with" lives next to the page-specific items even
+               though it's available to visitors and owners alike — the
+               whole point is letting any reader change the per-song
+               Listen routing without leaving the page. -->
+          <a
+            href="/{page.params.handle}?listen=set"
+            onclick={closeMenu}
+            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          >
+            Listen with…
+          </a>
+        {/if}
         {#if data.isAdmin}
           <button
             type="button"

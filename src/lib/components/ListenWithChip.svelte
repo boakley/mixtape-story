@@ -1,10 +1,11 @@
 <!--
   Visitor "Listen with" preference chip.
 
-  Shows a horizontal strip:  "Listen with: Apple Music · Spotify · YouTube · Other"
+  Shows a horizontal strip:  "Listen with: Apple · Spotify · YouTube · Other"
   Click a service to set the preference (writes the LISTEN_PREF_COOKIE
   so server-side renders pick it up on subsequent loads). Click "Other"
-  to clear the preference and fall back to the Odesli universal link.
+  to mark the explicit "no service, send me to Odesli" choice so the
+  first-Listen modal doesn't pop up later.
 
   `listenPref` is bindable so the parent can pass it to `listenHref()`
   per song. Parent typically seeds initial state from `data.viewerPref`
@@ -12,29 +13,26 @@
 -->
 <script lang="ts">
   import {
-    LISTEN_PREF_COOKIE,
     LISTEN_SERVICES,
     OTHER_LISTEN_TOOLTIP,
-    type ListenPref
+    writeListenPrefCookie,
+    type ListenPref,
+    type ListenService
   } from '$lib/listen';
 
   type Props = { listenPref?: ListenPref | null };
   let { listenPref = $bindable(null) }: Props = $props();
 
-  const listenOptions: Array<{ key: ListenPref | null; label: string; tooltip: string }> = [
+  const listenOptions: Array<{ key: ListenPref; label: string; tooltip: string }> = [
     ...(
-      Object.entries(LISTEN_SERVICES) as Array<[ListenPref, { label: string; tooltip: string }]>
+      Object.entries(LISTEN_SERVICES) as Array<[ListenService, { label: string; tooltip: string }]>
     ).map(([key, svc]) => ({ key, label: svc.label, tooltip: svc.tooltip })),
-    { key: null, label: 'Other', tooltip: OTHER_LISTEN_TOOLTIP }
+    { key: 'other', label: 'Other', tooltip: OTHER_LISTEN_TOOLTIP }
   ];
 
-  function setListenPref(key: ListenPref | null): void {
+  function setListenPref(key: ListenPref): void {
     listenPref = key;
-    if (key) {
-      document.cookie = `${LISTEN_PREF_COOKIE}=${key}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-    } else {
-      document.cookie = `${LISTEN_PREF_COOKIE}=; path=/; max-age=0; samesite=lax`;
-    }
+    writeListenPrefCookie(key);
   }
 </script>
 

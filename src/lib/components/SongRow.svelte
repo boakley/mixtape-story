@@ -38,6 +38,10 @@
     /** Called whenever the visitor interacts with this row's toggle or
      *  Listen link — lets the page dismiss the first-visit hint. */
     onInteract?: () => void;
+    /** Called *before* a Listen click navigates. Return true to make
+     *  SongRow preventDefault — the page handles the click instead
+     *  (e.g. popping the first-Listen modal). */
+    onListenAttempt?: (song: DisplaySong) => boolean;
   };
   let {
     song,
@@ -45,7 +49,8 @@
     listenPref,
     initiallyExpanded = false,
     showHint = false,
-    onInteract
+    onInteract,
+    onListenAttempt
   }: Props = $props();
 
   // `untrack` makes the "seed once, then user-controlled" intent
@@ -95,6 +100,12 @@
 
   function handleListenClick(e: MouseEvent): void {
     e.stopPropagation();
+    // Let the page intercept first (e.g. to pop the first-Listen
+    // modal). If it returns true, swallow the navigation; the page
+    // will handle opening the right URL after the visitor picks.
+    if (onListenAttempt?.(song) === true) {
+      e.preventDefault();
+    }
     onInteract?.();
   }
 </script>
