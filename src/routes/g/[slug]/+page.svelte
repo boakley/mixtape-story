@@ -5,6 +5,7 @@
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
   import ListenWithChip from '$lib/components/ListenWithChip.svelte';
   import HelpTip from '$lib/components/HelpTip.svelte';
+  import InlineEdit from '$lib/components/InlineEdit.svelte';
   import { listenHref, type ListenPref } from '$lib/listen';
   import { useStoredState } from '$lib/use-stored-state.svelte';
   import type { ActionData, PageData } from './$types';
@@ -83,36 +84,12 @@
   // "Songs we share" filter: songs picked by 2+ distinct contributors.
   const sharedSongs = $derived(data.songs.filter((s) => s.contributors.length >= 2));
 
-  // Inline-edit state for the group's two editable header fields. Each
-  // edit lives in its own form; the textarea / input is bound to the
-  // matching $state so the char counter stays live, and the `start…`
-  // helpers seed from current saved data (so cancel-and-re-edit doesn't
-  // surface stale text from an earlier session).
-  let editingDescription = $state(false);
-  let descValue = $state('');
-  const DESCRIPTION_MAX = 500;
-
-  function startEditingDescription(): void {
-    descValue = data.group.description;
-    editingDescription = true;
-  }
-
+  // Inline-edit open/closed state for the group's two editable header
+  // fields. The InlineEdit component owns the value, char counter,
+  // focus management, enhance hookup, and the close-on-success step;
+  // we just hold the boolean that the pencil flips on.
   let editingName = $state(false);
-  let nameValue = $state('');
-  const NAME_MAX = 100;
-
-  function startEditingName(): void {
-    nameValue = data.group.name;
-    editingName = true;
-  }
-
-  // Focus the textarea when edit mode opens. Done via a use:action rather
-  // than the `autofocus` attribute (which would trip svelte's a11y rule —
-  // that rule targets page-load autofocus; here the focus is response to a
-  // user click, which is fine, but the action is the cleaner expression).
-  function focusOnMount(node: HTMLElement): void {
-    node.focus();
-  }
+  let editingDescription = $state(false);
 
   function timeAgo(iso: string): string {
     const ms = Date.now() - new Date(iso).getTime();
@@ -153,54 +130,21 @@
       <a href="/" class="hover:text-accent">mixtapestory.com</a>
     </p>
     {#if editingName}
-      <form
-        method="POST"
-        action="?/editName"
-        class="mt-2"
-        use:enhance={() => {
-          return async ({ result, update }) => {
-            await update({ reset: false });
-            if (result.type === 'success') editingName = false;
-          };
-        }}
-      >
-        <label class="sr-only" for="group-name-edit">Group name</label>
-        <input
-          id="group-name-edit"
-          name="name"
-          type="text"
-          maxlength={NAME_MAX}
-          bind:value={nameValue}
-          use:focusOnMount
-          class="block w-full rounded-md border border-rule bg-paper px-3 py-2 text-3xl leading-tight text-ink focus:border-accent focus:outline-none sm:text-4xl"
-        />
-        <div class="mt-2 flex items-center justify-between gap-3">
-          <p class="text-xs text-ink-muted">{nameValue.length}/{NAME_MAX}</p>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              onclick={() => (editingName = false)}
-              class="rounded-md px-3 py-1 text-xs text-ink-muted hover:text-accent"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="rounded-md bg-ink px-3 py-1 text-xs text-paper hover:opacity-90"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-        {#if nameForm && 'error' in nameForm && nameForm.error}
-          <p role="alert" class="mt-1 text-xs text-accent">{nameForm.error}</p>
-        {/if}
-      </form>
+      <InlineEdit
+        bind:open={editingName}
+        label="Group name"
+        formAction="?/editName"
+        fieldName="name"
+        initialValue={data.group.name}
+        maxLength={100}
+        inputClass="text-3xl leading-tight sm:text-4xl"
+        errorMessage={nameForm && 'error' in nameForm ? nameForm.error : undefined}
+      />
     {:else}
       <h1 class="mt-2 text-3xl leading-tight text-ink sm:text-4xl">
         {data.group.name}{#if data.isSteward}<button
             type="button"
-            onclick={startEditingName}
+            onclick={() => (editingName = true)}
             aria-label="Edit group name"
             class="ml-2.5 inline-flex h-6 w-6 -translate-y-1 items-center justify-center align-middle text-ink-muted hover:text-accent"
           >
@@ -222,54 +166,22 @@
     {/if}
 
     {#if editingDescription}
-      <form
-        method="POST"
-        action="?/editDescription"
-        class="mt-2"
-        use:enhance={() => {
-          return async ({ result, update }) => {
-            await update({ reset: false });
-            if (result.type === 'success') editingDescription = false;
-          };
-        }}
-      >
-        <label class="sr-only" for="group-description-edit">Group description</label>
-        <textarea
-          id="group-description-edit"
-          name="description"
-          rows="3"
-          maxlength={DESCRIPTION_MAX}
-          bind:value={descValue}
-          use:focusOnMount
-          class="block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-        ></textarea>
-        <div class="mt-2 flex items-center justify-between gap-3">
-          <p class="text-xs text-ink-muted">{descValue.length}/{DESCRIPTION_MAX}</p>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              onclick={() => (editingDescription = false)}
-              class="rounded-md px-3 py-1 text-xs text-ink-muted hover:text-accent"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="rounded-md bg-ink px-3 py-1 text-xs text-paper hover:opacity-90"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-        {#if descriptionForm && 'error' in descriptionForm && descriptionForm.error}
-          <p role="alert" class="mt-1 text-xs text-accent">{descriptionForm.error}</p>
-        {/if}
-      </form>
+      <InlineEdit
+        bind:open={editingDescription}
+        label="Group description"
+        formAction="?/editDescription"
+        fieldName="description"
+        initialValue={data.group.description}
+        maxLength={500}
+        multiline
+        inputClass="text-sm"
+        errorMessage={descriptionForm && 'error' in descriptionForm ? descriptionForm.error : undefined}
+      />
     {:else if data.group.description}
       <p class="mt-2 text-sm text-ink-muted">
         {data.group.description}{#if data.isSteward}<button
             type="button"
-            onclick={startEditingDescription}
+            onclick={() => (editingDescription = true)}
             aria-label="Edit description"
             class="ml-1.5 inline-flex h-5 w-5 -translate-y-px items-center justify-center align-middle text-ink-muted hover:text-accent"
           >
@@ -292,7 +204,7 @@
       <p class="mt-2 text-sm italic text-ink-muted">
         <button
           type="button"
-          onclick={startEditingDescription}
+          onclick={() => (editingDescription = true)}
           class="underline decoration-rule underline-offset-2 hover:text-accent"
         >
           Add a description

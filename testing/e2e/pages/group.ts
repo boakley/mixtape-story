@@ -155,8 +155,10 @@ export class Group {
 
   async editName(newName: string): Promise<void> {
     await this.page.getByRole('button', { name: /edit group name/i }).click();
-    const input = this.page.locator('#group-name-edit');
-    await input.fill(newName);
+    // The input is sr-only-labeled "Group name" by InlineEdit — refactor-
+    // resilient: no hardcoded id selector to break if the component's
+    // field-id convention changes.
+    await this.page.getByLabel('Group name').fill(newName);
     await this.page.getByRole('button', { name: 'Save', exact: true }).click();
     // The form is dismissed and the <h1> reappears with the new name —
     // wait for that as the success signal.
@@ -165,8 +167,7 @@ export class Group {
 
   async editDescription(newDescription: string): Promise<void> {
     await this.page.getByRole('button', { name: /edit description/i }).click();
-    const textarea = this.page.locator('#group-description-edit');
-    await textarea.fill(newDescription);
+    await this.page.getByLabel('Group description').fill(newDescription);
     await this.page.getByRole('button', { name: 'Save', exact: true }).click();
     await this.page.getByText(newDescription, { exact: false }).first().waitFor();
   }
