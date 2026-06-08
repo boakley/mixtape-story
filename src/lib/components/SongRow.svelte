@@ -65,28 +65,35 @@
   }
 </script>
 
-<article class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 py-3">
-  <!-- Rail + solid accent dot. Rail extension matches py-3 so adjacent
+<article class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 py-2">
+  <!-- Rail + solid accent dot. Rail extension matches py-2 so adjacent
        rows merge into one spine. -->
   <div class="relative" aria-hidden="true">
-    <span class="absolute -bottom-3 -top-3 left-1/2 w-px -translate-x-1/2 bg-rule"></span>
+    <span class="absolute -bottom-2 -top-2 left-1/2 w-px -translate-x-1/2 bg-rule"></span>
+    <!-- Dot vertically centered on the title text. Offset is from
+         column-top (column-top = article-top + py), so the value
+         stays correct independent of the py choice — only the rail
+         extension above needs to track py changes. -->
     <span
-      class="absolute left-1/2 top-[0.875rem] h-2 w-2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper"
+      class="absolute left-1/2 top-[0.4375rem] h-2 w-2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper"
     ></span>
   </div>
 
   <div class="min-w-0">
     <!-- Title row: chevron + title/artist (button when expandable, div
          when not) + right-aligned Listen. Listen is a sibling of the
-         button so we never nest interactive elements. -->
+         title-area so we never nest interactive elements; the
+         title-area wraps the button AND the story below so both are
+         naturally bounded by where Listen sits in the flex row. -->
     <div class="flex items-baseline gap-3">
+      <div class="min-w-0 flex-1">
       {#if hasStory}
         <button
           type="button"
           onclick={() => (expandedInCompact = !expandedInCompact)}
           aria-expanded={isExpanded}
           aria-controls={storyId}
-          class="group flex min-w-0 flex-1 items-baseline gap-2 text-left"
+          class="group flex w-full min-w-0 items-baseline gap-2 text-left"
         >
           <span
             class="inline-flex w-3 shrink-0 justify-center text-ink-muted transition-transform {isExpanded
@@ -95,8 +102,8 @@
             aria-hidden="true"
           >
             <svg
-              width="13"
-              height="13"
+              width="11"
+              height="11"
               viewBox="0 0 14 14"
               fill="none"
               stroke="currentColor"
@@ -109,7 +116,7 @@
           </span>
           <span class="min-w-0 flex-1 leading-snug">
             <span class="block truncate text-base">
-              <span class="text-ink group-hover:text-accent">{song.title}</span>
+              <span class="font-medium text-ink group-hover:text-accent">{song.title}</span>
               {#if song.artist}
                 <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
               {/if}
@@ -117,12 +124,18 @@
             {#if song.artist}
               <span class="block truncate text-sm text-ink-muted sm:hidden">{song.artist}</span>
             {/if}
+            <!-- Teaser lives inside the title-content span so its right
+                 edge is bounded by the flex row above — never runs
+                 under the right-aligned `→ Listen`. -->
+            {#if showTeaser}
+              <span class="mt-1 block truncate text-sm text-ink-muted">{teaserText}</span>
+            {/if}
           </span>
         </button>
       {:else}
         <!-- Non-expandable: chevron column preserved (invisible) so the
              title still aligns with expandable rows above and below. -->
-        <div class="flex min-w-0 flex-1 items-baseline gap-2">
+        <div class="flex min-w-0 items-baseline gap-2">
           <span class="invisible inline-flex w-3 shrink-0 justify-center" aria-hidden="true">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="4 2 10 7 4 12" />
@@ -130,7 +143,7 @@
           </span>
           <span class="min-w-0 flex-1 leading-snug">
             <span class="block truncate text-base">
-              <span class="text-ink">{song.title}</span>
+              <span class="font-medium text-ink">{song.title}</span>
               {#if song.artist}
                 <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
               {/if}
@@ -141,6 +154,26 @@
           </span>
         </div>
       {/if}
+
+      <!-- Story body, inside title-area so its right edge is bounded
+           by where Listen sits in the row above. Left accent rule
+           with comfortable reading width; indented to align with title
+           text past the chevron column. -->
+      {#if showStory}
+        <div
+          id={storyId}
+          class="prose-story mt-3 ml-5 max-w-prose border-l-2 border-accent pl-3 text-base leading-relaxed text-ink"
+        >
+          {#if song.memoryYear}
+            <p class="text-sm italic text-ink-muted">
+              This song reminds me of {song.memoryYear}.
+            </p>
+          {/if}
+          <!-- marked output: raw HTML disabled at parse time; safe to inject. -->
+          {@html song.storyHtml}
+        </div>
+      {/if}
+      </div>
 
       <!-- Listen sits right-aligned in every state. The `→` glyph is
            aria-hidden and unstyled; only the label is underlined. -->
@@ -168,28 +201,5 @@
         </span>
       {/if}
     </div>
-
-    <!-- Compact + collapsed: one-line teaser under the title, indented
-         to align with title text (past the chevron column + gap). -->
-    {#if showTeaser}
-      <p class="mt-1 truncate pl-5 text-sm text-ink-muted">{teaserText}</p>
-    {/if}
-
-    <!-- Story body. Left accent rule with comfortable reading width.
-         Indented to align with title text. -->
-    {#if showStory}
-      <div
-        id={storyId}
-        class="prose-story mt-3 ml-5 max-w-prose border-l-2 border-accent pl-3 text-base leading-relaxed text-ink"
-      >
-        {#if song.memoryYear}
-          <p class="text-sm italic text-ink-muted">
-            This song reminds me of {song.memoryYear}.
-          </p>
-        {/if}
-        <!-- marked output: raw HTML disabled at parse time; safe to inject. -->
-        {@html song.storyHtml}
-      </div>
-    {/if}
   </div>
 </article>
