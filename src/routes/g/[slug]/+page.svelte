@@ -1,11 +1,10 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { page } from '$app/state';
   import { untrack } from 'svelte';
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
   import ListenWithChip from '$lib/components/ListenWithChip.svelte';
-  import HelpTip from '$lib/components/HelpTip.svelte';
   import InlineEdit from '$lib/components/InlineEdit.svelte';
+  import StewardSection from '$lib/components/StewardSection.svelte';
   import { listenHref, type ListenPref } from '$lib/listen';
   import { useStoredState } from '$lib/use-stored-state.svelte';
   import type { ActionData, PageData } from './$types';
@@ -65,22 +64,6 @@
     expandedSongsInCompact = next;
   }
 
-  // Steward section is collapsed by default — the manage UI is task-
-  // oriented and irrelevant most of the time the steward visits the
-  // page. State persists so a steward who routinely wants it open
-  // doesn't have to re-expand on every visit. This whole section will
-  // move to /g/{slug}/manage eventually (per the phase plan); the
-  // collapse is a stopgap.
-  const stewardOpen = useStoredState<boolean>(
-    'mixtapestory:steward-open',
-    false,
-    (raw) => (raw === 'true' ? true : raw === 'false' ? false : undefined)
-  );
-
-  function toggleStewardSection(): void {
-    stewardOpen.value = !stewardOpen.value;
-  }
-
   // "Songs we share" filter: songs picked by 2+ distinct contributors.
   const sharedSongs = $derived(data.songs.filter((s) => s.contributors.length >= 2));
 
@@ -101,17 +84,10 @@
     return `${Math.floor(d / 365)}y ago`;
   }
 
-  function inviteUrl(code: string): string {
-    const origin = page.url.origin;
-    return `${origin}/g/${data.group.slug}/i/${code}`;
-  }
-
   // Narrow the discriminated form payload so the template can access
-  // either the copy-flow error or the invite-flow error without TS
-  // complaints. `null`/`undefined` cases are handled by the template.
-  const inviteForm = $derived(
-    form && typeof form === 'object' && 'invite' in form ? form.invite : null
-  );
+  // the per-action error without TS complaints. The invite-flow
+  // payload now lives inside StewardSection; only the InlineEdit
+  // payloads stay here.
   const descriptionForm = $derived(
     form && typeof form === 'object' && 'description' in form ? form.description : null
   );
@@ -552,143 +528,7 @@
   {/snippet}
 
   {#if data.isSteward}
-    <section class="mt-10 rounded-md border border-rule bg-paper">
-      <button
-        type="button"
-        onclick={toggleStewardSection}
-        aria-expanded={stewardOpen.value}
-        aria-controls="steward-section-body"
-        class="group flex w-full items-center justify-between gap-3 rounded-t-md px-5 py-3 text-left hover:bg-rule/20 {stewardOpen.value
-          ? ''
-          : 'rounded-b-md'}"
-      >
-        <span class="text-xs uppercase tracking-wider text-ink-muted">
-          Steward · {data.invites.length === 0
-            ? 'No active invite codes'
-            : `${data.invites.length} active invite ${data.invites.length === 1 ? 'code' : 'codes'}`}
-        </span>
-        <span
-          class="text-ink-muted transition-transform group-hover:text-accent {stewardOpen.value
-            ? 'rotate-90'
-            : ''}"
-          aria-hidden="true"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="4 2 10 7 4 12" />
-          </svg>
-        </span>
-      </button>
-
-      {#if stewardOpen.value}
-        <div id="steward-section-body" class="border-t border-rule px-5 pb-5 pt-4">
-          {#if data.invites.length === 0}
-            <p class="text-sm text-ink-muted">No active invite codes yet.</p>
-          {:else}
-        <ul class="space-y-3">
-          {#each data.invites as inv (inv.id)}
-            <li class="rounded-md border border-rule bg-paper p-3" data-testid="invite-row" data-invite-code={inv.code}>
-              <div class="flex items-baseline justify-between gap-3">
-                <code class="text-sm text-ink">{inv.code}</code>
-                <form method="POST" action="?/revokeInvite" use:enhance>
-                  <input type="hidden" name="invite_id" value={inv.id} />
-                  <button type="submit" class="text-xs text-ink-muted underline decoration-rule underline-offset-2 hover:text-accent">
-                    Revoke
-                  </button>
-                </form>
-              </div>
-              <p class="mt-1 break-all text-xs text-ink-muted" data-testid="invite-url">{inviteUrl(inv.code)}</p>
-              <p class="mt-1 text-xs text-ink-muted">
-                {#if inv.expiresAt}Expires {new Date(inv.expiresAt).toLocaleDateString()}{:else}No expiry{/if}
-                ·
-                {#if inv.usesRemaining !== null}{inv.usesRemaining} {inv.usesRemaining === 1 ? 'use' : 'uses'} left{:else}Unlimited uses{/if}
-              </p>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-
-      <form method="POST" action="?/createInvite" use:enhance class="mt-4 space-y-3">
-        <label class="block">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="text-xs uppercase tracking-wider text-ink-muted">Code</span>
-            <HelpTip label="Code">
-              A short label members type to join — like "spring2026" or
-              "kitchen-table". Lowercase letters, digits, and hyphens;
-              4–32 characters.
-            </HelpTip>
-          </span>
-          <input
-            type="text"
-            name="code"
-            required
-            autocapitalize="none"
-            autocorrect="off"
-            spellcheck="false"
-            value={inviteForm && 'code' in inviteForm ? inviteForm.code ?? '' : ''}
-            class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-base text-ink focus:border-accent focus:outline-none"
-            placeholder="spring2026"
-          />
-        </label>
-
-        <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="inline-flex items-center gap-1.5">
-              <span class="text-xs uppercase tracking-wider text-ink-muted">Expires in (days)</span>
-              <HelpTip label="Expires in (days)">
-                How long this code stays valid. Leave blank for no expiry.
-                Max 365 days.
-              </HelpTip>
-            </span>
-            <input
-              type="number"
-              name="expires_in_days"
-              min="1"
-              max="365"
-              value={inviteForm && 'expiresInDays' in inviteForm ? inviteForm.expiresInDays ?? '' : ''}
-              class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-              placeholder="optional"
-            />
-          </label>
-          <label class="block">
-            <span class="inline-flex items-center gap-1.5">
-              <span class="text-xs uppercase tracking-wider text-ink-muted">Use cap</span>
-              <HelpTip label="Use cap">
-                Maximum number of people who can redeem this code. Leave
-                blank for unlimited. Max 1000.
-              </HelpTip>
-            </span>
-            <input
-              type="number"
-              name="uses_cap"
-              min="1"
-              max="1000"
-              value={inviteForm && 'usesCap' in inviteForm ? inviteForm.usesCap ?? '' : ''}
-              class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-              placeholder="optional"
-            />
-          </label>
-        </div>
-
-        {#if inviteForm && 'error' in inviteForm && inviteForm.error}
-          <p role="alert" class="text-sm text-accent">{inviteForm.error}</p>
-        {/if}
-
-        <button type="submit" class="rounded-md bg-ink px-4 py-2 text-sm text-paper hover:opacity-90">
-          Mint invite
-        </button>
-      </form>
-        </div>
-      {/if}
-    </section>
+    <StewardSection slug={data.group.slug} invites={data.invites} {form} />
   {/if}
 
   <footer class="mt-10 border-t border-rule pt-6 text-sm text-ink-muted">
