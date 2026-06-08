@@ -7,7 +7,10 @@
 
 import { test, expect } from '../fixtures/test';
 
-test('a creator adds songs by pasting a list', async ({ creator }) => {
+test(
+  'a creator adds songs by pasting a list',
+  { tag: ['@feature:editor', '@role:creator'] },
+  async ({ creator }) => {
   // Step 1: start at the editor.
   await creator.mixtape.openEditor();
   await expect(creator.page.getByRole('heading', { name: /edit/i })).toBeVisible();

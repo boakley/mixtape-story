@@ -5,7 +5,10 @@ import { test, expect } from '../fixtures/test';
 import { workerGroupSlug } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 
-test('a creator creates a group and lands as steward', async ({ creator }) => {
+test(
+  'a creator creates a group and lands as steward',
+  { tag: ['@feature:group', '@role:steward'] },
+  async ({ creator }) => {
   const slug = workerGroupSlug('writing-circle');
   const group = await createGroup(creator.page, {
     slug,

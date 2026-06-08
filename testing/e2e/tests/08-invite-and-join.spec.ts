@@ -10,7 +10,18 @@ import { workerGroupSlug, workerHandle } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 import { fetchMagicLinkFor } from '../fixtures/mailpit';
 
-test('a steward invites someone; the invitee joins via magic link', async ({ creator, visitor }) => {
+test(
+  'a steward invites someone; the invitee joins via magic link',
+  {
+    tag: [
+      '@feature:group',
+      '@feature:invite',
+      '@feature:auth',
+      '@role:steward',
+      '@role:new-user'
+    ]
+  },
+  async ({ creator, visitor }) => {
   const slug = workerGroupSlug('spring-cohort');
   const code = workerGroupSlug('spring2026'); // same naming pattern works for codes
   const timHandle = workerHandle('tim');

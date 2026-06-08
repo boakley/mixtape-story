@@ -7,7 +7,10 @@ import { test, expect } from '../fixtures/test';
 import { workerGroupSlug } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 
-test('a member shares and unshares their mixtape', async ({ creator }) => {
+test(
+  'a member shares and unshares their mixtape',
+  { tag: ['@feature:group', '@role:member'] },
+  async ({ creator }) => {
   const slug = workerGroupSlug('share-circle');
   // Seed the creator's mixtape with two songs.
   await creator.mixtape.addSongsByList([

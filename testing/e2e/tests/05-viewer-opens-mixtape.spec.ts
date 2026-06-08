@@ -4,7 +4,10 @@
 
 import { test, expect } from '../fixtures/test';
 
-test('an anonymous visitor opens a creator\'s mixtape', async ({ creator, visitor }) => {
+test(
+  'an anonymous visitor opens a creator\'s mixtape',
+  { tag: ['@feature:public', '@role:viewer'] },
+  async ({ creator, visitor }) => {
   // Set up the creator's mixtape with content.
   await creator.mixtape.addSongsByList([
     'Wish You Were Here - Pink Floyd',

@@ -9,7 +9,10 @@
 import { test, expect } from '../fixtures/test';
 import { fetchMagicLinkFor } from '../fixtures/mailpit';
 
-test('a brand-new visitor signs in via magic link', async ({ page }) => {
+test(
+  'a brand-new visitor signs in via magic link',
+  { tag: ['@feature:auth', '@role:new-user'] },
+  async ({ page }) => {
   const email = `newcomer-${Date.now()}@e2e.local`;
 
   // Step 1: type email into the login form. Wait for hydration so the
