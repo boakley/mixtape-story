@@ -98,6 +98,21 @@ pnpm exec playwright test --grep "@role:new-user"   # brand-new visitor journeys
 pnpm exec playwright test --grep-invert "@feature:auth"
 ```
 
+### Enforcement
+
+The rule "every spec has at least one `@feature:*` and one `@role:*`"
+is enforced by `scripts/check-test-tags.ts`, invoked as part of
+`pnpm test:unit` (via `src/lib/check-test-tags.test.ts`) and
+therefore CI. A missing-tag commit goes red without anyone needing
+hooks installed locally.
+
+For fast manual feedback: `pnpm check:tags`.
+
+The check is format-only (catches `@features:group` typos and empty
+`@feature:` values); it doesn't validate against the allowed-value
+list above, so semantic drift like `@feature:groups` would slip
+through. If we ever see that happen, layer in a strict allowlist.
+
 ### Why prefixes, not flat `@group` / `@steward`
 
 - **Slice by namespace, not just by value.** `--grep "@feature:"` matches any feature; impossible with flat tags.
@@ -124,6 +139,8 @@ A two-dimension scheme is cheap to set up at 9 specs and meaningful refactor pai
 | 07-create-group | `@feature:group` `@role:steward` |
 | 08-invite-and-join | `@feature:group` `@feature:invite` `@feature:auth` `@role:steward` `@role:new-user` |
 | 09-share-mixtape-with-group | `@feature:group` `@role:member` |
+| 10-group-tabs | `@feature:group` `@role:steward` |
+| 11-steward-inline-edit | `@feature:group` `@role:steward` |
 
 ## Authentication
 
