@@ -101,7 +101,7 @@ type Media = {
 
 When in doubt, the song stays the hero, the story sits alongside.
 
-See `docs/design-notes.md` for the longer reasoning and `docs/mockups/whatsapp-unfurl.html` for the visual direction.
+See `docs/design-notes.md` for the longer reasoning and `docs/mockups/whatsapp-unfurl.html` for the visual direction. Before adding a new UI surface, read `docs/design-language.md` — it pins down the color tokens, typography scale, and visual conventions (e.g. solid accent dot = song, hollow accent ring = mixtape) so a new page fits the existing vocabulary instead of inventing parallel ones.
 
 ## WhatsApp distribution
 
