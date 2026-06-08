@@ -22,8 +22,10 @@ test(
   await expect(visitor.page.getByText(/Wish You Were Here/i).first()).toBeVisible();
   await expect(visitor.page.getByText(/Such Great Heights/i).first()).toBeVisible();
 
-  // The Listen affordance is visible — its target depends on whether
-  // Odesli resolved by the time the test runs, so we just assert the
-  // link exists.
-  await expect(visitor.page.getByText(/listen/i).first()).toBeVisible();
+  // A listen affordance is visible. The exact form depends on
+  // whether Odesli resolved by the time the test runs: a `→ Listen`
+  // link (resolved or disabled-state), or the 30-second `Preview`
+  // button when only the audio preview is available. Either is a
+  // valid pass for "the visitor can act on this song."
+  await expect(visitor.page.getByText(/listen|preview/i).first()).toBeVisible();
 });

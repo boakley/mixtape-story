@@ -1,15 +1,49 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import SongRow from '$lib/components/SongRow.svelte';
   import QrDialog from '$lib/components/QrDialog.svelte';
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
-  import ListenWithChip from '$lib/components/ListenWithChip.svelte';
+  import InlineEdit from '$lib/components/InlineEdit.svelte';
   import { type ListenPref } from '$lib/listen';
   import { useStoredState } from '$lib/use-stored-state.svelte';
-  import type { PageData } from './$types';
+  import type { ActionData, PageData } from './$types';
 
-  type Props = { data: PageData };
-  let { data }: Props = $props();
+  type Props = { data: PageData; form: ActionData };
+  let { data, form }: Props = $props();
+
+  // QR dialog opens via the `?qr=1` query param so the layout's ☰ menu
+  // can trigger it cross-component (the menu lives in +layout.svelte;
+  // page-level state isn't reachable from there). On dialog close we
+  // strip the param so a refresh doesn't reopen the dialog.
+  $effect(() => {
+    if (page.url.searchParams.get('qr') === '1') qrOpen = true;
+  });
+  function closeQr(): void {
+    qrOpen = false;
+    const url = new URL(page.url);
+    url.searchParams.delete('qr');
+    goto(url.pathname + url.search, { replaceState: true, noScroll: true });
+  }
+
+  // Displayed mixtape title: falls back to "{display_name}'s mixtape"
+  // when the creator hasn't set a custom name. The fallback keeps every
+  // existing mixtape's title intact without a backfill, and reactively
+  // follows display-name changes if the creator updates that.
+  const mixtapeTitle = $derived(data.mixtapeName ?? `${data.displayName}'s mixtape`);
+
+  // Inline-edit open/close state for the two editable header fields.
+  let editingName = $state(false);
+  let editingDescription = $state(false);
+
+  // Narrow the discriminated form payload for each editor's error path.
+  const nameForm = $derived(
+    form && typeof form === 'object' && 'name' in form ? form.name : null
+  );
+  const descriptionForm = $derived(
+    form && typeof form === 'object' && 'description' in form ? form.description : null
+  );
 
   const view = useStoredState<View>(
     'mixtapestory:view',
@@ -127,60 +161,22 @@
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">
   <header class="mb-6 sm:mb-8">
-    <p class="text-xs uppercase tracking-wider text-ink-muted">
-      <a href="/" class="hover:text-accent">mixtapestory.com</a>
-    </p>
-    <h1 class="mt-2 text-3xl leading-tight text-ink sm:text-4xl">
-      {data.displayName}'s mixtape
-    </h1>
-
-    <div class="mt-2 flex items-center justify-between gap-4">
-      <div>
-        <p class="text-sm text-ink-muted" data-testid="mixtape-meta">
-          {data.songs.length} songs{yearRange ? ` · ${yearRange}` : ''}
-        </p>
-        {#if isOwner && data.visitorCount !== null}
-          <p class="mt-0.5 text-xs text-ink-muted">
-            {data.visitorCount}
-            {data.visitorCount === 1 ? 'visitor' : 'visitors'}
-          </p>
-        {/if}
-      </div>
-
-      <ViewToggle bind:view={view.value} />
-    </div>
-
-    <div class="mt-3">
-      <ListenWithChip bind:listenPref />
-    </div>
-
-    <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-      {#if isOwner}
-        <a
-          href="/{data.handle}/edit"
-          class="inline-flex items-center gap-1.5 text-ink hover:text-accent"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-            <path d="m15 5 4 4" />
-          </svg>
-          <span class="underline decoration-accent decoration-2 underline-offset-4">Edit mixtape</span>
-        </a>
-      {/if}
+    <!-- Cap row: brand link left, Share right. The global ☰ from
+         +layout.svelte floats at the same right edge — pr-12 reserves
+         48px (w-9 ☰ + 12px gap) so Share lands cleanly to the left of
+         it instead of underneath. Managing-this-mixtape items (Edit,
+         QR, Listen with) live inside that menu contextually. -->
+    <div class="flex items-center justify-between pr-12">
+      <a
+        href="/"
+        class="text-xs uppercase tracking-wider text-ink-muted hover:text-accent"
+      >
+        mixtapestory.com
+      </a>
       <button
         type="button"
         onclick={handleShare}
-        class="inline-flex items-center gap-1.5 text-ink hover:text-accent"
+        class="inline-flex items-center gap-1.5 text-sm text-ink hover:text-accent"
       >
         <svg
           width="13"
@@ -199,34 +195,115 @@
         </svg>
         <span class="underline decoration-accent decoration-2 underline-offset-4">Share</span>
       </button>
-      <button
-        type="button"
-        onclick={() => (qrOpen = true)}
-        class="inline-flex items-center gap-1.5 text-ink hover:text-accent"
-      >
-        <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true">
-          <g fill="none" stroke="currentColor" stroke-width="1.1">
-            <rect x="1" y="1" width="4" height="4" rx="0.5" />
-            <rect x="9" y="1" width="4" height="4" rx="0.5" />
-            <rect x="1" y="9" width="4" height="4" rx="0.5" />
-          </g>
-          <g fill="currentColor">
-            <rect x="2.4" y="2.4" width="1.2" height="1.2" />
-            <rect x="10.4" y="2.4" width="1.2" height="1.2" />
-            <rect x="2.4" y="10.4" width="1.2" height="1.2" />
-            <rect x="9" y="9" width="1.4" height="1.4" />
-            <rect x="11.6" y="9" width="1.4" height="1.4" />
-            <rect x="9" y="11.6" width="1.4" height="1.4" />
-            <rect x="11.6" y="11.6" width="1.4" height="1.4" />
-          </g>
-        </svg>
-        <span class="underline decoration-accent decoration-2 underline-offset-4">QR code</span>
-      </button>
+    </div>
+
+    <!-- Title row: h1 + pencil (owner) or InlineEdit when actively editing. -->
+    {#if editingName}
+      <InlineEdit
+        bind:open={editingName}
+        label="Mixtape title"
+        formAction="?/editName"
+        fieldName="name"
+        initialValue={mixtapeTitle}
+        maxLength={100}
+        inputClass="text-3xl leading-tight sm:text-4xl"
+        errorMessage={nameForm && 'error' in nameForm ? nameForm.error : undefined}
+      />
+    {:else}
+      <h1 class="mt-2 text-3xl leading-tight text-ink sm:text-4xl">
+        {mixtapeTitle}{#if isOwner}<button
+            type="button"
+            onclick={() => (editingName = true)}
+            aria-label="Edit mixtape title"
+            class="ml-2.5 inline-flex h-6 w-6 -translate-y-1 items-center justify-center align-middle text-ink-muted hover:text-accent"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M10 1.5l2.5 2.5L4 12.5H1.5V10L10 1.5z" />
+              <path d="M8.5 3l2.5 2.5" />
+            </svg>
+          </button>{/if}
+      </h1>
+    {/if}
+
+    <!-- Description: asymmetric. Visitor + empty → nothing renders, costs
+         zero vertical space. Owner + empty → quiet "Add a description"
+         prompt. With value → muted one-liner + pencil (owner). -->
+    {#if editingDescription}
+      <InlineEdit
+        bind:open={editingDescription}
+        label="Mixtape description"
+        formAction="?/editDescription"
+        fieldName="description"
+        initialValue={data.mixtapeDescription}
+        maxLength={500}
+        multiline
+        inputClass="text-sm"
+        errorMessage={descriptionForm && 'error' in descriptionForm
+          ? descriptionForm.error
+          : undefined}
+      />
+    {:else if data.mixtapeDescription}
+      <p class="mt-2 text-sm text-ink-muted">
+        {data.mixtapeDescription}{#if isOwner}<button
+            type="button"
+            onclick={() => (editingDescription = true)}
+            aria-label="Edit description"
+            class="ml-1.5 inline-flex h-5 w-5 -translate-y-px items-center justify-center align-middle text-ink-muted hover:text-accent"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M10 1.5l2.5 2.5L4 12.5H1.5V10L10 1.5z" />
+              <path d="M8.5 3l2.5 2.5" />
+            </svg>
+          </button>{/if}
+      </p>
+    {:else if isOwner}
+      <p class="mt-2 text-sm italic text-ink-muted">
+        <button
+          type="button"
+          onclick={() => (editingDescription = true)}
+          class="underline decoration-rule underline-offset-2 hover:text-accent"
+        >
+          Add a description
+        </button>
+      </p>
+    {/if}
+
+    <!-- Meta row: merged single line + ViewToggle. Visitor count auto-
+         drops on narrow viewports via sm:inline (and is creator-only
+         anyway). -->
+    <div class="mt-3 flex items-baseline justify-between gap-3">
+      <p class="text-sm text-ink-muted" data-testid="mixtape-meta">
+        {data.songs.length} {data.songs.length === 1 ? 'song' : 'songs'}{yearRange
+          ? ` · ${yearRange}`
+          : ''}{#if isOwner && data.visitorCount !== null}<span
+            class="hidden sm:inline"
+          > · {data.visitorCount}
+            {data.visitorCount === 1 ? 'visitor' : 'visitors'}</span>{/if}
+      </p>
+      <ViewToggle bind:view={view.value} />
     </div>
   </header>
 
   {#if qrOpen}
-    <QrDialog url={mixtapeUrl} title="{data.displayName}'s mixtape" onClose={() => (qrOpen = false)} />
+    <QrDialog url={mixtapeUrl} title={mixtapeTitle} onClose={closeQr} />
   {/if}
 
   {#if data.songs.length === 0}

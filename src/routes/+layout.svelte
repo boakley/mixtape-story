@@ -15,6 +15,17 @@
   const HIDE_MENU_ON = new Set(['/login']);
   const showMenu = $derived(!HIDE_MENU_ON.has(page.url.pathname));
 
+  // When the viewer is on their own /{handle} mixtape page, the ☰ menu
+  // gains a "Manage this mixtape" section with Edit + QR (Listen-with
+  // and Visitor-count come in later steps). Detect via the SvelteKit
+  // route id so we don't have to guess from the pathname.
+  const isMixtapeView = $derived(page.route.id === '/[handle]');
+  const isOwnerOfThisMixtape = $derived(
+    isMixtapeView &&
+      typeof page.params.handle === 'string' &&
+      page.params.handle === data.viewerHandle
+  );
+
   function openMenu() {
     menuOpen = true;
     // If the user is already on an admin page when they pop the menu,
@@ -48,7 +59,19 @@
 {@render children()}
 
 {#if showMenu}
-<nav bind:this={navEl} class="fixed top-3 right-3 z-50">
+<!-- Position the ☰ at the right edge of the page-content area (where
+     → Listen sits on song rows), not the viewport edge, AND vertically
+     centered on every page's cap row content. Every <main> uses
+     py-8 sm:py-12; the cap row sits at the top of <main>. Pin the
+     band to top-6 sm:top-10 so the h-9 (36px) ☰ button's vertical
+     center lands on the cap row's text baseline.
+
+     pointer-events-none on the outer band lets clicks pass through to
+     content; pointer-events-auto on the nav re-enables interactivity
+     for the button + dropdown. -->
+<div class="pointer-events-none fixed inset-x-0 top-6 z-50 sm:top-10">
+  <div class="mx-auto flex max-w-2xl justify-end px-5 sm:px-6">
+<nav bind:this={navEl} class="pointer-events-auto relative">
   <button
     type="button"
     onclick={toggleMenu}
@@ -101,6 +124,26 @@
             class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
           >
             My mixtape
+          </a>
+        {/if}
+        {#if isOwnerOfThisMixtape}
+          <hr class="border-rule" />
+          <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">
+            Manage this mixtape
+          </p>
+          <a
+            href="/{page.params.handle}/edit"
+            onclick={closeMenu}
+            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          >
+            Edit mixtape <span class="text-ink-muted">· songs &amp; stories</span>
+          </a>
+          <a
+            href="/{page.params.handle}?qr=1"
+            onclick={closeMenu}
+            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+          >
+            QR code
           </a>
         {/if}
         {#if data.isAdmin}
@@ -179,4 +222,6 @@
     </div>
   {/if}
 </nav>
+  </div>
+</div>
 {/if}

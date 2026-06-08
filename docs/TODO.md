@@ -19,8 +19,11 @@ freely.
   * generate demos (stashed; largely working)
   * I want to be able to add a description to my mixtape, and edit
     the title, just like a group.
+  * Should the menu include a "My groups" section?
 * by default, e2e tests need to be headless. It should be trivial for me
   to run them headed with a command line switch or env var
+* I want the placeholder song titles to be different, so I can advertise
+  my favorite artists. The toast by Adam Ezra, maybe "Everything will be alright" by Paul Thorn, maybe something from South Hill Banks or Maia Sharp (Kind?)
 
 ---
 
@@ -62,3 +65,9 @@ freely.
   parser; an E2E pass would cover the gate-wiring on every route.
   Probably needs a separate playwright config or env override
   (the default config runs with FEATURES_GROUPS=1 from .env.local).
+* mixtape masthead: visitor-count "Display" preference. The doc
+  (`docs/implementation-notes.md` §1) calls for a creator toggle in
+  the `☰` to hide the visitor count from the meta line — for the
+  creator who'd rather not look at it. The auto-drop on narrow
+  viewports is wired via CSS; this is the explicit on-wide-screens
+  toggle. Persist via the `useStoredState` rune like the view toggle.
