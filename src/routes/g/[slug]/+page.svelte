@@ -64,6 +64,29 @@
     expandedSongsInCompact = next;
   }
 
+  // Teaser line for a song row on Songs-we-share / All-songs tabs.
+  // Natural-language list of the contributors who actually wrote a
+  // story (contributors who just picked the song don't promise text).
+  // Caps at 2 names + "and N others" so even a popular song reads
+  // cleanly in one truncated line.
+  function buildStoryTeaser(names: string[]): string {
+    if (names.length === 0) return '';
+    if (names.length === 1) return `Story by ${names[0]}`;
+    if (names.length === 2) {
+      // Easter egg: when the two storytellers are Jack and Diane (in
+      // either order), echo the John Mellencamp song title instead of
+      // alphabetical order. The seed-group demo lands on this pairing
+      // for "Taxi" and "Tea for One"; in real groups the chance of two
+      // storytellers being named Jack and Diane who'd mind the
+      // reference is vanishingly small.
+      const lc = new Set(names.map((n) => n.toLowerCase()));
+      if (lc.has('jack') && lc.has('diane')) return 'Stories by Jack and Diane';
+      return `Stories by ${names[0]} and ${names[1]}`;
+    }
+    if (names.length === 3) return `Stories by ${names[0]}, ${names[1]}, and ${names[2]}`;
+    return `Stories by ${names[0]}, ${names[1]}, and ${names.length - 2} others`;
+  }
+
   // "Songs we share" filter: songs picked by 2+ distinct contributors.
   const sharedSongs = $derived(data.songs.filter((s) => s.contributors.length >= 2));
 
@@ -391,138 +414,179 @@
   {/if}
 
   {#snippet songEntry(song: PageData['songs'][number])}
-    {@const showStories = view.value === 'expanded' || expandedSongsInCompact.has(song.dedupKey)}
     {@const songListenUrl = listenHref(song, listenPref)}
+    <!-- "Has story" at group scale: at least one contributor's story
+         block has rendered content. A song that's been picked but
+         where no one's written about it isn't an expand target. -->
+    {@const storyContributorNames = song.contributors
+      .filter((c) => c.storyExcerptHtml.length > 0)
+      .map((c) => c.displayName)}
+    {@const hasStory = storyContributorNames.length > 0}
+    {@const isExpanded = view.value === 'expanded' || expandedSongsInCompact.has(song.dedupKey)}
+    {@const showStories = hasStory && isExpanded}
+    {@const showTeaser = hasStory && !isExpanded}
+    {@const storyId = `group-story-${song.dedupKey}`}
     <article
       data-testid="song-entry"
       data-song-title={song.title}
-      class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 {view.value === 'compact'
-        ? 'py-1'
-        : 'py-4 sm:py-5'}"
+      class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 py-2"
     >
+      <!-- Rail + solid accent dot (song marker). Matches SongRow on the
+           personal mixtape page, so the same vocabulary reads across
+           both surfaces. -->
       <div class="relative" aria-hidden="true">
+        <span class="absolute -bottom-2 -top-2 left-1/2 w-px -translate-x-1/2 bg-rule"></span>
         <span
-          class="absolute left-1/2 w-px -translate-x-1/2 bg-rule {view.value === 'compact'
-            ? '-top-1 -bottom-1'
-            : '-top-4 -bottom-4 sm:-top-5 sm:-bottom-5'}"
-        ></span>
-        <span
-          class="absolute left-1/2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper {view.value ===
-          'compact'
-            ? 'top-[0.625rem] h-1.5 w-1.5'
-            : 'top-[0.75rem] h-2.5 w-2.5 sm:top-[0.9375rem]'}"
+          class="absolute left-1/2 top-[0.4375rem] h-2 w-2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper"
         ></span>
       </div>
+
       <div class="min-w-0">
-        {#if view.value === 'compact'}
-          <!-- Compact: title-row is a button (click to expand stories in
-               place); Listen sits adjacent so it stays one tap away even
-               when the row is collapsed. Layout matches the personal-page
-               SongRow compact mode. -->
-          <div class="flex items-baseline justify-between gap-3">
-            <button
-              type="button"
-              onclick={() => toggleCompactSong(song.dedupKey)}
-              aria-expanded={showStories}
-              title={showStories ? 'Hide stories' : 'Show stories'}
-              class="group flex min-w-0 flex-1 items-start gap-2 text-left"
-            >
-              <span class="min-w-0 flex-1 leading-snug">
-                <span class="block truncate text-base">
-                  <span class="text-ink group-hover:text-accent">{song.title}</span>
+        <!-- Title row: title-area (button when expandable, div when not)
+             + right-aligned Listen. The title-area wraps the title AND
+             the stories below so both are bounded by where Listen sits
+             — no ragged right edges running under Listen. -->
+        <div class="flex items-baseline gap-3">
+          <div class="min-w-0 flex-1">
+            {#if hasStory}
+              <button
+                type="button"
+                onclick={() => toggleCompactSong(song.dedupKey)}
+                aria-expanded={isExpanded}
+                aria-controls={storyId}
+                class="group flex w-full min-w-0 items-baseline gap-2 text-left"
+              >
+                <span
+                  class="inline-flex w-3 shrink-0 justify-center text-ink-muted transition-transform {isExpanded
+                    ? 'rotate-90 text-accent'
+                    : ''}"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="4 2 10 7 4 12" />
+                  </svg>
+                </span>
+                <span class="min-w-0 flex-1 leading-snug">
+                  <span class="block truncate text-base">
+                    <span class="font-medium text-ink group-hover:text-accent">{song.title}</span>
+                    {#if song.artist}
+                      <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
+                    {/if}
+                  </span>
                   {#if song.artist}
-                    <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
+                    <span class="block truncate text-sm text-ink-muted sm:hidden">{song.artist}</span>
+                  {/if}
+                  <!-- Teaser inside the title-content span so its right
+                       edge is bounded by where Listen sits. -->
+                  {#if showTeaser}
+                    <span class="mt-1 block truncate text-sm text-ink-muted">
+                      {buildStoryTeaser(storyContributorNames)}
+                    </span>
                   {/if}
                 </span>
-                {#if song.artist}
-                  <span class="block truncate text-sm text-ink-muted sm:hidden">{song.artist}</span>
-                {/if}
-              </span>
-              <span
-                class="shrink-0 pt-1 text-ink-muted transition-transform group-hover:text-accent {showStories
-                  ? 'rotate-90'
-                  : ''}"
-                aria-hidden="true"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+              </button>
+            {:else}
+              <!-- Non-expandable: chevron column preserved (invisible) so
+                   the title still aligns with expandable rows. -->
+              <div class="flex min-w-0 items-baseline gap-2">
+                <span
+                  class="invisible inline-flex w-3 shrink-0 justify-center"
+                  aria-hidden="true"
                 >
-                  <polyline points="4 2 10 7 4 12" />
-                </svg>
-              </span>
-            </button>
-            {#if songListenUrl}
-              <a
-                href={songListenUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
-              >
-                → Listen
-              </a>
-            {/if}
-          </div>
-        {:else}
-          <div class="flex items-baseline justify-between gap-3">
-            <h3 class="min-w-0 flex-1 text-xl leading-tight text-ink sm:text-2xl">{song.title}</h3>
-            {#if songListenUrl}
-              <a
-                href={songListenUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
-              >
-                → Listen
-              </a>
-            {/if}
-          </div>
-          {#if song.artist}
-            <p class="mt-1 text-sm text-ink-muted">{song.artist}</p>
-          {/if}
-        {/if}
-
-        {#if showStories}
-          <div class="space-y-5 {view.value === 'compact' ? 'mt-2 pb-2' : 'mt-3'}">
-            {#each song.contributors as c (c.handle)}
-              {@const storyKey = `${song.dedupKey}|${c.handle}`}
-              {@const storyExpanded = expandedStoryKeys.has(storyKey)}
-              <div>
-                <p class="text-xs text-ink-muted">
-                  from <a href="/{c.handle}" class="text-ink hover:text-accent">{c.displayName}</a>
-                </p>
-                {#if c.memoryYear}
-                  <p class="mt-1 text-sm italic text-ink-muted">
-                    This song reminds me of {c.memoryYear}.
-                  </p>
-                {/if}
-                <div class="prose-story mt-1 max-w-prose text-base leading-relaxed text-ink">
-                  <!-- marked-rendered story: raw HTML escaped at parse time. -->
-                  {#if storyExpanded}
-                    {@html c.storyFullHtml}
-                  {:else}
-                    {@html c.storyExcerptHtml}
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="4 2 10 7 4 12" />
+                  </svg>
+                </span>
+                <span class="min-w-0 flex-1 leading-snug">
+                  <span class="block truncate text-base">
+                    <span class="font-medium text-ink">{song.title}</span>
+                    {#if song.artist}
+                      <span class="hidden text-ink-muted sm:inline"> · {song.artist}</span>
+                    {/if}
+                  </span>
+                  {#if song.artist}
+                    <span class="block truncate text-sm text-ink-muted sm:hidden">{song.artist}</span>
                   {/if}
-                  {#if c.storyIsTruncated}
-                    <button
-                      type="button"
-                      onclick={() => toggleStory(storyKey)}
-                      class="ml-1 text-sm text-ink-muted hover:text-accent"
-                    >
-                      [{storyExpanded ? 'less' : 'more'}]
-                    </button>
-                  {/if}
-                </div>
+                </span>
               </div>
-            {/each}
+            {/if}
+
+            <!-- Stories: stacked, each prefixed "from {DisplayName}". The
+                 whole block sits inside the title-area + uses the accent
+                 left-rule treatment from SongRow so the writing is
+                 visually distinct from the head row. -->
+            {#if showStories}
+              <div
+                id={storyId}
+                class="ml-5 mt-3 space-y-5 border-l-2 border-accent pl-3"
+              >
+                {#each song.contributors as c (c.handle)}
+                  {@const storyKey = `${song.dedupKey}|${c.handle}`}
+                  {@const storyExpanded = expandedStoryKeys.has(storyKey)}
+                  <div>
+                    <p class="text-xs text-ink-muted">
+                      from <a href="/{c.handle}" class="text-ink hover:text-accent">{c.displayName}</a>
+                    </p>
+                    {#if c.memoryYear}
+                      <p class="mt-1 text-sm italic text-ink-muted">
+                        This song reminds me of {c.memoryYear}.
+                      </p>
+                    {/if}
+                    <div class="prose-story mt-1 text-base leading-relaxed text-ink">
+                      <!-- marked output: raw HTML disabled at parse time. -->
+                      {#if storyExpanded}
+                        {@html c.storyFullHtml}
+                      {:else}
+                        {@html c.storyExcerptHtml}
+                      {/if}
+                      {#if c.storyIsTruncated}
+                        <button
+                          type="button"
+                          onclick={() => toggleStory(storyKey)}
+                          class="ml-1 text-sm text-ink-muted hover:text-accent"
+                        >
+                          [{storyExpanded ? 'less' : 'more'}]
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
-        {/if}
+
+          <!-- Listen, right-aligned in every state. `→` is aria-hidden
+               and unstyled; only the label is underlined. stopPropagation
+               so tapping it never toggles the row. -->
+          {#if songListenUrl}
+            <a
+              href={songListenUrl}
+              onclick={(e) => e.stopPropagation()}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="shrink-0 text-sm text-ink hover:text-accent"
+            >
+              <span aria-hidden="true">→ </span><span
+                class="underline decoration-accent decoration-2 underline-offset-4">Listen</span>
+            </a>
+          {/if}
+        </div>
       </div>
     </article>
   {/snippet}
