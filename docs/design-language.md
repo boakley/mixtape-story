@@ -95,16 +95,41 @@ the container's 1px rule.
 
 Canonical: the tab strip in `src/routes/g/[slug]/+page.svelte`.
 
-### Action arrows
+### Action links
 
-The `→` arrow does double duty:
+Every action link is `{leading glyph} {label}`. Underline the **label
+only**; the leading glyph stays plain (and aria-hidden, since the label
+already names the action).
 
-- **Action link**: `→ Listen`, `→ Share my mixtape with this group`.
-  Underlined with `decoration-accent decoration-2 underline-offset-4`.
-  Text-ink at rest, accent on hover.
-- **Affordance chevron**: trailing `→` on a row whose whole body is a
-  link (the Member-mixtapes rows). Muted at rest, accent on hover via
-  `group-hover`.
+```svelte
+<a href={url}>
+  <span aria-hidden="true">→ </span><span
+    class="underline decoration-accent decoration-2 underline-offset-4">Listen</span>
+</a>
+```
+
+Text-ink at rest, accent on hover.
+
+The leading glyph is chosen by meaning, not by uniformity:
+
+- **`→`** for most actions — `→ Listen`, `→ Share my mixtape with this group`.
+- **A conventional icon** where one exists and is more learnable than
+  the arrow — notably the system **share** glyph for Share. Listen and
+  Share end up visually consistent (identical accent underline on the
+  label) while Share keeps the icon a first-time visitor recognizes
+  before they read the word.
+
+The earlier convention here underlined the glyph + label together; that
+forced Share onto the arrow scheme and lost the share-icon affordance.
+Refined 2026-06-08 with the masthead redesign.
+
+### Affordance chevron
+
+Trailing `→` on a row whose whole body is a link (the Member-mixtapes
+rows on the group landing). Muted at rest, accent on hover via
+`group-hover`. Distinct from the per-song *disclosure* chevron in
+`SongRow.svelte` (which is `›`, rotates on open, and means "expand
+this row to see the story"). Don't conflate the two.
 
 ### Section card
 
