@@ -1,4 +1,5 @@
 import { expect, type Page, type Locator } from '@playwright/test';
+import { awaitHydrated } from '../helpers/hydration';
 
 // Domain-shaped interface to a group landing page.
 // Methods read as what a steward or member does: mintInvite,
@@ -32,16 +33,30 @@ export class Group {
    * action's reactive refresh.
    */
   async shareMyMixtape(): Promise<void> {
-    await this.page.getByRole('button', { name: /share my mixtape with this group/i }).click();
-    await this.page.waitForLoadState('networkidle');
+    // Form action via use:enhance — no hard nav, so `awaitHydrated`
+    // would return instantly off the still-mounted layout. Wait on
+    // the action's response instead, which fires only when the
+    // server-side INSERT has committed.
+    await Promise.all([
+      this.page.waitForResponse(
+        (r) => r.url().includes('shareWith') && r.request().method() === 'POST',
+        { timeout: 15_000 }
+      ),
+      this.page.getByRole('button', { name: /share my mixtape with this group/i }).click()
+    ]);
   }
 
   /** Reverse of shareMyMixtape — hides the viewer's card from the directory. */
   async unshareMyMixtape(): Promise<void> {
-    await this.page
-      .getByRole('button', { name: /stop sharing my mixtape with this group/i })
-      .click();
-    await this.page.waitForLoadState('networkidle');
+    await Promise.all([
+      this.page.waitForResponse(
+        (r) => r.url().includes('unshareFrom') && r.request().method() === 'POST',
+        { timeout: 15_000 }
+      ),
+      this.page
+        .getByRole('button', { name: /stop sharing my mixtape with this group/i })
+        .click()
+    ]);
   }
 
   /**
@@ -196,7 +211,7 @@ export async function createGroup(
   await page.goto('/g/create');
   // Wait for hydration — fill before the client takes over can race
   // with Svelte's `value={form?.slug ?? ''}` reactive binding.
-  await page.waitForLoadState('networkidle');
+  await awaitHydrated(page);
 
   const slug = page.locator('input[name="slug"]');
   await slug.click();

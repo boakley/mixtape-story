@@ -5,6 +5,7 @@
 
 import { test, expect } from '../fixtures/test';
 import { markAllSongsResolved } from '../fixtures/auth';
+import { awaitHydrated } from '../helpers/hydration';
 
 test(
   'first Listen click pops the chooser; picking a service opens the deep link; no re-prompt on reload',
@@ -20,7 +21,7 @@ test(
     // Wait for hydration: without it the Listen <a> may fire its
     // default navigation before SongRow's onclick handler attaches,
     // and we'd see a song.link page instead of the chooser modal.
-    await visitor.page.waitForLoadState('networkidle');
+    await awaitHydrated(visitor.page);
 
     const dialog = visitor.page.getByRole('dialog', { name: /where do you listen/i });
     const listenLink = visitor.page
@@ -53,7 +54,7 @@ test(
 
     // Reload — next Listen click navigates directly, no modal.
     await visitor.page.reload();
-    await visitor.page.waitForLoadState('networkidle');
+    await awaitHydrated(visitor.page);
     const [secondPopup] = await Promise.all([
       visitor.page.waitForEvent('popup'),
       visitor.page
@@ -77,7 +78,7 @@ test(
     // ?listen=set is the URL the layout ☰ "Listen with…" item routes
     // to — same modal, just no pending song to open after picking.
     await visitor.page.goto(`/${creator.handle}?listen=set`);
-    await visitor.page.waitForLoadState('networkidle');
+    await awaitHydrated(visitor.page);
 
     const dialog = visitor.page.getByRole('dialog', { name: /where do you listen/i });
     await expect(dialog).toBeVisible();
@@ -101,7 +102,7 @@ test(
     await markAllSongsResolved(creator.id);
 
     await visitor.page.goto(`/${creator.handle}`);
-    await visitor.page.waitForLoadState('networkidle');
+    await awaitHydrated(visitor.page);
     const dialog = visitor.page.getByRole('dialog', { name: /where do you listen/i });
     await visitor.page
       .locator('article')
@@ -126,7 +127,7 @@ test(
 
     // Reload — Listen still routes through Odesli with no modal.
     await visitor.page.reload();
-    await visitor.page.waitForLoadState('networkidle');
+    await awaitHydrated(visitor.page);
     const [reloadPopup] = await Promise.all([
       visitor.page.waitForEvent('popup'),
       visitor.page

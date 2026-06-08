@@ -9,6 +9,7 @@ import { test, expect } from '../fixtures/test';
 import { workerGroupSlug, workerHandle } from '../fixtures/auth';
 import { createGroup } from '../pages/group';
 import { fetchMagicLinkFor } from '../fixtures/mailpit';
+import { awaitHydrated } from '../helpers/hydration';
 
 test(
   'a steward invites someone; the invitee joins via magic link',
@@ -45,7 +46,7 @@ test(
   // Wait for the invite page to hydrate before submitting — without
   // this, the form posts before use:enhance is wired up and the
   // response-wait predicate misses it.
-  await visitor.page.waitForLoadState('networkidle');
+  await awaitHydrated(visitor.page);
   await visitor.page.locator('input[name="email"]').fill(email);
   await Promise.all([
     visitor.page.waitForResponse(

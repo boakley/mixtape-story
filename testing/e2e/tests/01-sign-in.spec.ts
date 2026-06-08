@@ -8,6 +8,7 @@
 
 import { test, expect } from '../fixtures/test';
 import { fetchMagicLinkFor } from '../fixtures/mailpit';
+import { awaitHydrated } from '../helpers/hydration';
 
 test(
   'a brand-new visitor signs in via magic link',
@@ -21,7 +22,7 @@ test(
   // response Playwright's waitForResponse predicate sometimes misses
   // under load.
   await page.goto('/login');
-  await page.waitForLoadState('networkidle');
+  await awaitHydrated(page);
   await page.locator('input[name="email"]').fill(email);
 
   // Step 2: submit and wait for the form-action response specifically.

@@ -4,6 +4,7 @@
 // interaction and persists dismissed across reloads via localStorage.
 
 import { test, expect } from '../fixtures/test';
+import { awaitHydrated } from '../helpers/hydration';
 
 test(
   'first-time visitor sees the auto-open + hint; interaction dismisses it; reload keeps it dismissed',
@@ -19,6 +20,10 @@ test(
     // Fresh anonymous visitor — the `visitor` fixture opens a brand-new
     // browser context, so localStorage starts empty.
     await visitor.page.goto(`/${creator.handle}`);
+    // Without this fence the upcoming row click can land before
+    // SongRow's onclick is bound — handleToggle never fires, the
+    // hint never dismisses, and the toHaveCount(0) check times out.
+    await awaitHydrated(visitor.page);
 
     // The hint shows on first visit.
     const hint = visitor.page.getByTestId('first-visit-hint');
@@ -41,6 +46,7 @@ test(
     // Reload — the dismissed state survives because
     // `mixtapestory:hinted` is persisted in localStorage.
     await visitor.page.reload();
+    await awaitHydrated(visitor.page);
     await expect(visitor.page.getByTestId('first-visit-hint')).toHaveCount(0);
   }
 );

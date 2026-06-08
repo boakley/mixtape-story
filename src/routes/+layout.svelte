@@ -51,6 +51,17 @@
     if (!menuOpen) return;
     if (navEl && !navEl.contains(e.target as Node)) closeMenu();
   }
+
+  // Hydration marker for E2E tests. Children mount before parents in
+  // Svelte, so by the time the root layout's $effect fires every
+  // SongRow / ListenChooser / form on the page has its onclick
+  // handlers bound. Tests wait for `body[data-hydrated="true"]` via
+  // the `awaitHydrated` helper instead of `waitForLoadState(
+  // 'networkidle')`, which Playwright marks as discouraged.
+  $effect(() => {
+    document.body.setAttribute('data-hydrated', 'true');
+    return () => document.body.removeAttribute('data-hydrated');
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />

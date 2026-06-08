@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import { awaitHydrated } from '../helpers/hydration';
 
 // Domain-shaped interface to a creator's mixtape. Methods read as
 // what a person does: addSong, writeStory, share. No DOM verbs in the
@@ -54,9 +55,17 @@ export class Mixtape {
     // few seconds when the cache is cold.
     const importBtn = this.page.getByRole('button', { name: /^Import \d+ songs?$/ });
     await importBtn.waitFor({ state: 'visible', timeout: 20_000 });
-    await importBtn.click();
-    // Editor refreshes back to itself with the new rows.
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the form-action response, not just the click. enhance
+    // re-runs `load` in place (no hard nav) so `awaitHydrated` returns
+    // instantly off the still-mounted layout — callers would race
+    // ahead before the INSERT committed.
+    await Promise.all([
+      this.page.waitForResponse(
+        (r) => r.url().includes('import_playlist') && r.request().method() === 'POST',
+        { timeout: 15_000 }
+      ),
+      importBtn.click()
+    ]);
   }
 
   /**
@@ -69,7 +78,7 @@ export class Mixtape {
    */
   async writeStory(position: number, text: string, memoryYear?: number): Promise<void> {
     await this.openEditor();
-    await this.page.waitForLoadState('networkidle');
+    await awaitHydrated(this.page);
     const row = this.page.getByTestId('song-row').nth(position - 1);
     await row.getByRole('button', { name: /^Story✓?$/ }).click();
     const storyInput = row.locator('textarea[name="text"]');
