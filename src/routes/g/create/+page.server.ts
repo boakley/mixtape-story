@@ -1,5 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { isFeatureEnabled } from '$lib/server/features';
+import { isFeatureAvailable } from '$lib/server/features';
 import { isReservedGroupSlug } from '$lib/groups/reserved-slugs';
 import { adminClient } from '$lib/server/supabase-admin';
 import type { Actions, PageServerLoad } from './$types';
@@ -8,13 +8,14 @@ const SLUG_RE = /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/;
 const MAX_NAME = 80;
 const MAX_DESCRIPTION = 500;
 
-function gate() {
-  if (!isFeatureEnabled('groups')) throw error(404, 'Not Found');
+function gate(user: { email?: string | null } | null) {
+  if (!isFeatureAvailable('groups', user)) throw error(404, 'Not Found');
 }
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
-  gate();
+  // Get user before the gate so admin-bypass works.
   const { user } = await safeGetSession();
+  gate(user);
   if (!user) throw redirect(303, '/login');
 
   // A creator needs a profile (handle) before they can create a group — the
@@ -39,8 +40,8 @@ function shortFail(status: number, values: Values, errorMsg: string) {
 
 export const actions: Actions = {
   default: async ({ request, locals: { safeGetSession } }) => {
-    gate();
     const { user } = await safeGetSession();
+    gate(user);
     if (!user) throw redirect(303, '/login');
 
     const data = await request.formData();

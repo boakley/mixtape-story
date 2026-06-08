@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { isAdminEmail } from './admin';
 
 // Feature flags read at request time from the environment. Off by default;
 // a route or load function flips a feature on for itself by checking
@@ -8,6 +9,14 @@ import { env } from '$env/dynamic/private';
 // Truthy values: "1", "true", "yes", "on" (case-insensitive). Everything
 // else (including empty) is off. Keeping the parsing forgiving means
 // `.dev.vars`, `.env.local`, and Cloudflare secrets all behave the same.
+//
+// Admin bypass: a feature that's globally off is still available to
+// admin users (see ADMIN_EMAILS). So a feature can be deployed to prod
+// without exposing it to regular users while still being testable on
+// the real domain and data. Server routes that have access to the
+// request's user should call `isFeatureAvailable(key, user)` rather
+// than the bare `isFeatureEnabled(key)` — the latter is the env-only
+// check, useful for tests and for getFeatures' anonymous fallback.
 
 export type FeatureKey = 'groups';
 
@@ -28,10 +37,31 @@ export function isFeatureEnabled(key: FeatureKey): boolean {
   }
 }
 
-// Snapshot all flags in one shot — convenient for layout-load to send to
-// the client without per-key calls. Add keys here as new features land.
-export function getFeatures(): Record<FeatureKey, boolean> {
+/**
+ * Is this feature available to this user?
+ *
+ * Returns true if the global env flag is on (everyone gets it) or if
+ * the user is an admin (admin bypass for in-prod testing of a feature
+ * that's globally off). Pass null/undefined for unauthenticated
+ * requests — they only see features the env flag has enabled.
+ */
+export function isFeatureAvailable(
+  key: FeatureKey,
+  user: { email?: string | null } | null | undefined
+): boolean {
+  if (isFeatureEnabled(key)) return true;
+  return isAdminEmail(user?.email);
+}
+
+/**
+ * Snapshot every flag's availability for one user, for layout-load to
+ * pass to the client. UI affordances key off this; admin sees the
+ * affordances for features they have access to via bypass.
+ */
+export function getFeatures(
+  user: { email?: string | null } | null | undefined
+): Record<FeatureKey, boolean> {
   return {
-    groups: isFeatureEnabled('groups')
+    groups: isFeatureAvailable('groups', user)
   };
 }

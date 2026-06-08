@@ -1,5 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
-import { isFeatureEnabled } from '$lib/server/features';
+import { isFeatureAvailable } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
 import { requireGroupAccess, requireGroupRole } from '$lib/server/group-actions';
 import { renderStory } from '$lib/server/markdown';
@@ -11,8 +11,8 @@ import type { Actions, PageServerLoad } from './$types';
 // The group landing page. Anyone can see name + description; only members
 // see the member-mixtapes list. Songs we share / All songs tabs land later.
 
-function gate() {
-  if (!isFeatureEnabled('groups')) throw error(404, 'Not Found');
+function gate(user: { email?: string | null } | null) {
+  if (!isFeatureAvailable('groups', user)) throw error(404, 'Not Found');
 }
 
 type MemberMixtape = {
@@ -66,9 +66,10 @@ type AggregatedSong = {
 const CODE_RE = /^[a-z0-9][a-z0-9-]{2,30}[a-z0-9]$/;
 
 export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetSession } }) => {
-  gate();
-
+  // Get user before the gate so admin-bypass works.
   const { user } = await safeGetSession();
+  gate(user);
+
   const admin = adminClient();
 
   // Visitor "Listen with" preference, read from the same cookie the

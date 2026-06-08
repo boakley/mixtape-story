@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { isAdminEmail } from '$lib/server/admin';
-import { isFeatureEnabled } from '$lib/server/features';
+import { isFeatureAvailable } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
 import type { PageServerLoad } from './$types';
 
@@ -29,7 +29,7 @@ type RawGroupRow = {
 
 export const load: PageServerLoad = async ({ url, locals: { safeGetSession } }) => {
   const { user } = await safeGetSession();
-  if (!isFeatureEnabled('groups')) throw error(404, 'Not Found');
+  if (!isFeatureAvailable('groups', user)) throw error(404, 'Not Found');
   if (!isAdminEmail(user?.email)) throw error(404, 'Not found');
 
   const sort: Sort = url.searchParams.get('sort') === 'name' ? 'name' : 'activity';

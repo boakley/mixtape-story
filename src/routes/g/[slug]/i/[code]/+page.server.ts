@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { PUBLIC_SITE_URL } from '$env/static/public';
-import { isFeatureEnabled } from '$lib/server/features';
+import { isFeatureAvailable } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -25,8 +25,8 @@ import type { Actions, PageServerLoad } from './$types';
 // surface the same "no longer active" message — prevents brute-force
 // enumeration and doesn't leak steward behavior.
 
-function gate() {
-  if (!isFeatureEnabled('groups')) throw error(404, 'Not Found');
+function gate(user: { email?: string | null } | null) {
+  if (!isFeatureAvailable('groups', user)) throw error(404, 'Not Found');
 }
 
 type AnonState =
@@ -34,7 +34,9 @@ type AnonState =
   | { status: 'invalid'; group: { name: string; slug: string } };
 
 export const load: PageServerLoad = async ({ params, locals: { safeGetSession } }) => {
-  gate();
+  // Get user before the gate so admin-bypass works.
+  const { user: gateUser } = await safeGetSession();
+  gate(gateUser);
 
   const admin = adminClient();
 
@@ -132,8 +134,9 @@ export const actions: Actions = {
   // `emailRedirectTo` carries the invite URL as the `next` param so
   // post-verification they land right back here and the signed-in load
   // takes over.
-  requestInvite: async ({ request, params, locals: { supabase } }) => {
-    gate();
+  requestInvite: async ({ request, params, locals: { supabase, safeGetSession } }) => {
+    const { user } = await safeGetSession();
+    gate(user);
 
     const data = await request.formData();
     const email = String(data.get('email') ?? '').trim();

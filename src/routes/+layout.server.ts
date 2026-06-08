@@ -20,6 +20,6 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, safeGetSessio
     user,
     viewerHandle,
     isAdmin: isAdminEmail(user?.email),
-    features: getFeatures()
+    features: getFeatures(user)
   };
 };

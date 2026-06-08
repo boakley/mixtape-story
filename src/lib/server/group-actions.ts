@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { isFeatureEnabled } from './features';
+import { isFeatureAvailable } from './features';
 import { adminClient } from './supabase-admin';
 
 // Common entry guards for the six /g/{slug} form actions. Every action
@@ -45,9 +45,11 @@ export async function requireGroupAccess(
   params: Params,
   locals: Locals
 ): Promise<GroupContext> {
-  if (!isFeatureEnabled('groups')) throw error(404, 'Not Found');
-
+  // Get the user before the feature gate so admin-bypass works: an
+  // admin visiting a flag-off feature in prod sees the page; everyone
+  // else gets a 404 as if the route didn't exist.
   const { user } = await locals.safeGetSession();
+  if (!isFeatureAvailable('groups', user)) throw error(404, 'Not Found');
   if (!user) throw redirect(303, '/login');
 
   const admin = adminClient();
