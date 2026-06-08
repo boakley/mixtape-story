@@ -141,6 +141,13 @@
               Mixtapes
             </a>
             <a
+              href="/admin/groups"
+              onclick={closeMenu}
+              class="block py-1.5 pl-6 pr-3 text-sm text-ink hover:bg-rule hover:text-accent"
+            >
+              Groups
+            </a>
+            <a
               href="/admin/queue"
               onclick={closeMenu}
               class="block py-1.5 pl-6 pr-3 text-sm text-ink hover:bg-rule hover:text-accent"
