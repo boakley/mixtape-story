@@ -1,42 +1,26 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
-  import { onMount, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
   import ListenWithChip from '$lib/components/ListenWithChip.svelte';
   import HelpTip from '$lib/components/HelpTip.svelte';
   import { listenHref, type ListenPref } from '$lib/listen';
+  import { useStoredState } from '$lib/use-stored-state.svelte';
   import type { ActionData, PageData } from './$types';
 
   type Props = { data: PageData; form: ActionData };
   let { data, form }: Props = $props();
 
   // Tab state. Default is the directory ("Member mixtapes"); choice
-  // persists in localStorage so a visitor lands back on whichever tab
-  // they prefer. SSR-safe: `localStorage` is read in onMount only.
+  // persists across reloads via the useStoredState rune.
   type Tab = 'mixtapes' | 'shared' | 'all';
-  const TAB_KEY = 'group-tab';
-  let activeTab = $state<Tab>('mixtapes');
-
-  onMount(() => {
-    try {
-      const stored = localStorage.getItem(TAB_KEY);
-      if (stored === 'mixtapes' || stored === 'shared' || stored === 'all') {
-        activeTab = stored;
-      }
-    } catch {
-      // private mode / SSR fallback — leave default.
-    }
-  });
-
-  function setTab(t: Tab): void {
-    activeTab = t;
-    try {
-      localStorage.setItem(TAB_KEY, t);
-    } catch {
-      // ignore — read at next mount will just miss
-    }
-  }
+  const activeTab = useStoredState<Tab>(
+    'mixtapestory:group-tab',
+    'mixtapes',
+    (raw) =>
+      raw === 'mixtapes' || raw === 'shared' || raw === 'all' ? raw : undefined
+  );
 
   // Per-(song, contributor) expansion state for the [more]/[less] toggle.
   // Set of `${dedupKey}|${handle}` strings; key is unique per story
@@ -51,11 +35,13 @@
     expandedStoryKeys = next;
   }
 
-  // Expanded/compact view for the song tabs. The ViewToggle component
-  // owns the localStorage hookup; binding `view` here gives us read
-  // access so the song snippet can branch on it. Shared key with the
+  // Expanded/compact view for the song tabs. Shared key with the
   // personal mixtape page means a toggle on either page carries to both.
-  let view = $state<View>('compact');
+  const view = useStoredState<View>(
+    'mixtapestory:view',
+    'compact',
+    (raw) => (raw === 'expanded' || raw === 'compact' ? raw : undefined)
+  );
 
   // Visitor "Listen with" preference. Same pattern as the personal page:
   // seed from server-read cookie so SSR hrefs and chip active state match
@@ -80,28 +66,18 @@
 
   // Steward section is collapsed by default — the manage UI is task-
   // oriented and irrelevant most of the time the steward visits the
-  // page. State persists in localStorage so a steward who routinely
-  // wants it open doesn't have to re-expand on every visit. This whole
-  // section will move to /g/{slug}/manage eventually (per the phase
-  // plan); the collapse is a stopgap.
-  let stewardOpen = $state(false);
-  const STEWARD_STORAGE_KEY = 'mixtapestory:steward-open';
-
-  $effect(() => {
-    try {
-      if (localStorage.getItem(STEWARD_STORAGE_KEY) === 'true') stewardOpen = true;
-    } catch {
-      // private mode — leave default closed
-    }
-  });
+  // page. State persists so a steward who routinely wants it open
+  // doesn't have to re-expand on every visit. This whole section will
+  // move to /g/{slug}/manage eventually (per the phase plan); the
+  // collapse is a stopgap.
+  const stewardOpen = useStoredState<boolean>(
+    'mixtapestory:steward-open',
+    false,
+    (raw) => (raw === 'true' ? true : raw === 'false' ? false : undefined)
+  );
 
   function toggleStewardSection(): void {
-    stewardOpen = !stewardOpen;
-    try {
-      localStorage.setItem(STEWARD_STORAGE_KEY, String(stewardOpen));
-    } catch {
-      // ignore
-    }
+    stewardOpen.value = !stewardOpen.value;
   }
 
   // "Songs we share" filter: songs picked by 2+ distinct contributors.
@@ -354,9 +330,9 @@
       <button
         type="button"
         role="tab"
-        aria-selected={activeTab === 'mixtapes'}
-        onclick={() => setTab('mixtapes')}
-        class="-mb-px border-b-2 pb-2.5 pt-2 text-[13px] transition-colors {activeTab ===
+        aria-selected={activeTab.value === 'mixtapes'}
+        onclick={() => (activeTab.value = 'mixtapes')}
+        class="-mb-px border-b-2 pb-2.5 pt-2 text-[13px] transition-colors {activeTab.value ===
         'mixtapes'
           ? 'border-accent font-medium text-ink'
           : 'border-transparent text-ink-muted hover:text-accent'}"
@@ -366,9 +342,9 @@
       <button
         type="button"
         role="tab"
-        aria-selected={activeTab === 'shared'}
-        onclick={() => setTab('shared')}
-        class="-mb-px border-b-2 pb-2.5 pt-2 text-[13px] transition-colors {activeTab === 'shared'
+        aria-selected={activeTab.value === 'shared'}
+        onclick={() => (activeTab.value = 'shared')}
+        class="-mb-px border-b-2 pb-2.5 pt-2 text-[13px] transition-colors {activeTab.value === 'shared'
           ? 'border-accent font-medium text-ink'
           : 'border-transparent text-ink-muted hover:text-accent'}"
       >
@@ -377,9 +353,9 @@
       <button
         type="button"
         role="tab"
-        aria-selected={activeTab === 'all'}
-        onclick={() => setTab('all')}
-        class="-mb-px border-b-2 pb-2.5 pt-2 text-[13px] transition-colors {activeTab === 'all'
+        aria-selected={activeTab.value === 'all'}
+        onclick={() => (activeTab.value = 'all')}
+        class="-mb-px border-b-2 pb-2.5 pt-2 text-[13px] transition-colors {activeTab.value === 'all'
           ? 'border-accent font-medium text-ink'
           : 'border-transparent text-ink-muted hover:text-accent'}"
       >
@@ -387,7 +363,7 @@
       </button>
     </div>
 
-    {#if activeTab === 'mixtapes'}
+    {#if activeTab.value === 'mixtapes'}
       {#if data.mixtapes.length === 0}
         <section class="mt-4 rounded-md border border-rule bg-paper p-5">
           <p class="text-sm text-ink">No mixtapes here yet.</p>
@@ -482,7 +458,7 @@
           {/if}
         </div>
       {/if}
-    {:else if activeTab === 'shared'}
+    {:else if activeTab.value === 'shared'}
       {#if sharedSongs.length === 0}
         <p class="mt-6 text-sm italic text-ink-muted">No shared songs yet.</p>
       {:else}
@@ -491,7 +467,7 @@
             {sharedSongs.length}
             {sharedSongs.length === 1 ? 'song' : 'songs'} picked by two or more of you.
           </p>
-          <ViewToggle bind:view />
+          <ViewToggle bind:view={view.value} />
         </div>
         <div class="mt-2">
           <ListenWithChip bind:listenPref />
@@ -502,7 +478,7 @@
           {/each}
         </div>
       {/if}
-    {:else if activeTab === 'all'}
+    {:else if activeTab.value === 'all'}
       {#if data.songs.length === 0}
         <section class="mt-4 rounded-md border border-rule bg-paper p-5">
           <p class="text-sm text-ink">No songs yet — be the first.</p>
@@ -512,7 +488,7 @@
           <p class="text-sm text-ink-muted">
             Every song picked by the group · newest first.
           </p>
-          <ViewToggle bind:view />
+          <ViewToggle bind:view={view.value} />
         </div>
         <div class="mt-2">
           <ListenWithChip bind:listenPref />
@@ -527,30 +503,30 @@
   {/if}
 
   {#snippet songEntry(song: PageData['songs'][number])}
-    {@const showStories = view === 'expanded' || expandedSongsInCompact.has(song.dedupKey)}
+    {@const showStories = view.value === 'expanded' || expandedSongsInCompact.has(song.dedupKey)}
     {@const songListenUrl = listenHref(song, listenPref)}
     <article
       data-testid="song-entry"
       data-song-title={song.title}
-      class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 {view === 'compact'
+      class="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 {view.value === 'compact'
         ? 'py-1'
         : 'py-4 sm:py-5'}"
     >
       <div class="relative" aria-hidden="true">
         <span
-          class="absolute left-1/2 w-px -translate-x-1/2 bg-rule {view === 'compact'
+          class="absolute left-1/2 w-px -translate-x-1/2 bg-rule {view.value === 'compact'
             ? '-top-1 -bottom-1'
             : '-top-4 -bottom-4 sm:-top-5 sm:-bottom-5'}"
         ></span>
         <span
-          class="absolute left-1/2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper {view ===
+          class="absolute left-1/2 -translate-x-1/2 rounded-full bg-accent ring-2 ring-paper {view.value ===
           'compact'
             ? 'top-[0.625rem] h-1.5 w-1.5'
             : 'top-[0.75rem] h-2.5 w-2.5 sm:top-[0.9375rem]'}"
         ></span>
       </div>
       <div class="min-w-0">
-        {#if view === 'compact'}
+        {#if view.value === 'compact'}
           <!-- Compact: title-row is a button (click to expand stories in
                place); Listen sits adjacent so it stays one tap away even
                when the row is collapsed. Layout matches the personal-page
@@ -625,7 +601,7 @@
         {/if}
 
         {#if showStories}
-          <div class="space-y-5 {view === 'compact' ? 'mt-2 pb-2' : 'mt-3'}">
+          <div class="space-y-5 {view.value === 'compact' ? 'mt-2 pb-2' : 'mt-3'}">
             {#each song.contributors as c (c.handle)}
               {@const storyKey = `${song.dedupKey}|${c.handle}`}
               {@const storyExpanded = expandedStoryKeys.has(storyKey)}
@@ -668,9 +644,9 @@
       <button
         type="button"
         onclick={toggleStewardSection}
-        aria-expanded={stewardOpen}
+        aria-expanded={stewardOpen.value}
         aria-controls="steward-section-body"
-        class="group flex w-full items-center justify-between gap-3 rounded-t-md px-5 py-3 text-left hover:bg-rule/20 {stewardOpen
+        class="group flex w-full items-center justify-between gap-3 rounded-t-md px-5 py-3 text-left hover:bg-rule/20 {stewardOpen.value
           ? ''
           : 'rounded-b-md'}"
       >
@@ -680,7 +656,7 @@
             : `${data.invites.length} active invite ${data.invites.length === 1 ? 'code' : 'codes'}`}
         </span>
         <span
-          class="text-ink-muted transition-transform group-hover:text-accent {stewardOpen
+          class="text-ink-muted transition-transform group-hover:text-accent {stewardOpen.value
             ? 'rotate-90'
             : ''}"
           aria-hidden="true"
@@ -700,7 +676,7 @@
         </span>
       </button>
 
-      {#if stewardOpen}
+      {#if stewardOpen.value}
         <div id="steward-section-body" class="border-t border-rule px-5 pb-5 pt-4">
           {#if data.invites.length === 0}
             <p class="text-sm text-ink-muted">No active invite codes yet.</p>

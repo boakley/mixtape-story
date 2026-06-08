@@ -1,14 +1,11 @@
 <!--
-  Shared expanded/compact toggle.
+  Shared Expanded/Compact pill toggle.
 
-  Owns the localStorage hookup so the choice persists across both the
-  personal mixtape page (`/{handle}`) and the group landing's song tabs
-  (`/g/{slug}`). Reading from `mixtapestory:view`, the same key used since
-  the personal page introduced this toggle — toggling on one page carries
-  to the other, which is the "consistent across pages" behavior we want.
-
-  Pure presentation otherwise: `view` is bindable so consumers can react
-  (passing it down to `<SongRow view={view} />`, gating an `{#if}`, etc.).
+  Pure presentation since the localStorage hookup moved into the
+  useStoredState rune. Consumers seed the state with the rune and pass
+  the bindable property in — both the personal mixtape page (`/{handle}`)
+  and the group landing's song tabs (`/g/{slug}`) do this so the choice
+  carries between them via the `mixtapestory:view` key.
 -->
 <script lang="ts" module>
   export type View = 'expanded' | 'compact';
@@ -17,34 +14,12 @@
 <script lang="ts">
   type Props = { view?: View };
   let { view = $bindable('compact') }: Props = $props();
-
-  const STORAGE_KEY = 'mixtapestory:view';
-
-  // Read once on client mount; SSR keeps the default. Private-mode /
-  // disabled-storage browsers fall through silently.
-  $effect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === 'compact' || saved === 'expanded') view = saved;
-    } catch {
-      // ignore
-    }
-  });
-
-  function setView(next: View): void {
-    view = next;
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // ignore
-    }
-  }
 </script>
 
 <div class="inline-flex shrink-0 rounded-full border border-rule p-0.5 text-xs">
   <button
     type="button"
-    onclick={() => setView('expanded')}
+    onclick={() => (view = 'expanded')}
     aria-pressed={view === 'expanded'}
     class="rounded-full px-3 py-1 transition-colors {view === 'expanded'
       ? 'bg-ink text-paper'
@@ -54,7 +29,7 @@
   </button>
   <button
     type="button"
-    onclick={() => setView('compact')}
+    onclick={() => (view = 'compact')}
     aria-pressed={view === 'compact'}
     class="rounded-full px-3 py-1 transition-colors {view === 'compact'
       ? 'bg-ink text-paper'

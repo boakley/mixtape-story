@@ -5,12 +5,17 @@
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
   import ListenWithChip from '$lib/components/ListenWithChip.svelte';
   import { type ListenPref } from '$lib/listen';
+  import { useStoredState } from '$lib/use-stored-state.svelte';
   import type { PageData } from './$types';
 
   type Props = { data: PageData };
   let { data }: Props = $props();
 
-  let view = $state<View>('compact');
+  const view = useStoredState<View>(
+    'mixtapestory:view',
+    'compact',
+    (raw) => (raw === 'expanded' || raw === 'compact' ? raw : undefined)
+  );
   let qrOpen = $state(false);
 
   const mixtapeUrl = $derived(`https://mixtapestory.com/${data.handle}`);
@@ -142,7 +147,7 @@
         {/if}
       </div>
 
-      <ViewToggle bind:view />
+      <ViewToggle bind:view={view.value} />
     </div>
 
     <div class="mt-3">
@@ -228,7 +233,7 @@
     <p class="text-ink-muted">No songs yet.</p>
   {:else}
     {#each data.songs as song (song.id)}
-      <SongRow {song} {view} {listenPref} />
+      <SongRow {song} view={view.value} {listenPref} />
     {/each}
   {/if}
 
