@@ -1,6 +1,7 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { isFeatureEnabled } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
+import { requireGroupAccess, requireGroupRole } from '$lib/server/group-actions';
 import { renderStory } from '$lib/server/markdown';
 import { truncateStory, normalizeSongKey } from '$lib/server/story-truncate';
 import { LISTEN_PREF_COOKIE, isListenPref, type ListenPref } from '$lib/listen';
@@ -304,27 +305,10 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
 export const actions: Actions = {
   // Share the user's mixtape with this group. Idempotent — the PK on
   // (mixtape_id, group_id) makes duplicate inserts a no-op.
-  shareWith: async ({ params, locals: { safeGetSession } }) => {
-    gate();
-    const { user } = await safeGetSession();
-    if (!user) throw redirect(303, '/login');
-
-    const admin = adminClient();
-
-    const { data: group } = await admin
-      .from('groups')
-      .select('id')
-      .eq('slug', params.slug)
-      .maybeSingle();
-    if (!group) throw error(404, 'Group not found');
-
-    const { data: membership } = await admin
-      .from('group_memberships')
-      .select('role')
-      .eq('group_id', group.id)
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (!membership) return fail(403, { error: 'Join this group first.' });
+  shareWith: async ({ params, locals }) => {
+    const ctx = await requireGroupRole(params, locals, 'member');
+    if (!ctx.ok) return fail(ctx.status, { error: ctx.message });
+    const { user, admin, group } = ctx;
 
     const { data: mixtape } = await admin
       .from('mixtapes')
@@ -346,19 +330,8 @@ export const actions: Actions = {
 
   // Stop sharing the user's mixtape with this group. Reverses shareWith
   // (without touching the underlying mixtape or its songs/stories).
-  unshareFrom: async ({ params, locals: { safeGetSession } }) => {
-    gate();
-    const { user } = await safeGetSession();
-    if (!user) throw redirect(303, '/login');
-
-    const admin = adminClient();
-
-    const { data: group } = await admin
-      .from('groups')
-      .select('id')
-      .eq('slug', params.slug)
-      .maybeSingle();
-    if (!group) throw error(404, 'Group not found');
+  unshareFrom: async ({ params, locals }) => {
+    const { user, admin, group } = await requireGroupAccess(params, locals);
 
     const { data: mixtape } = await admin
       .from('mixtapes')
@@ -379,29 +352,10 @@ export const actions: Actions = {
   // Steward mints a new invite code. Code is human-pickable, validated
   // against the same regex baked into the schema; optional expiry and
   // optional use cap default to "never expires, unlimited uses".
-  createInvite: async ({ params, request, locals: { safeGetSession } }) => {
-    gate();
-    const { user } = await safeGetSession();
-    if (!user) throw redirect(303, '/login');
-
-    const admin = adminClient();
-
-    const { data: group } = await admin
-      .from('groups')
-      .select('id')
-      .eq('slug', params.slug)
-      .maybeSingle();
-    if (!group) throw error(404, 'Group not found');
-
-    const { data: membership } = await admin
-      .from('group_memberships')
-      .select('role')
-      .eq('group_id', group.id)
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (membership?.role !== 'steward') {
-      return fail(403, { invite: { error: 'Stewards only.' } });
-    }
+  createInvite: async ({ params, request, locals }) => {
+    const ctx = await requireGroupRole(params, locals, 'steward');
+    if (!ctx.ok) return fail(ctx.status, { invite: { error: ctx.message } });
+    const { user, admin, group } = ctx;
 
     const data = await request.formData();
     const code = String(data.get('code') ?? '').trim().toLowerCase();
@@ -452,27 +406,10 @@ export const actions: Actions = {
 
   // Steward revokes an invite. Soft revoke (sets revoked_at) so
   // historical clicks render a stable "no longer active" message.
-  revokeInvite: async ({ params, request, locals: { safeGetSession } }) => {
-    gate();
-    const { user } = await safeGetSession();
-    if (!user) throw redirect(303, '/login');
-
-    const admin = adminClient();
-
-    const { data: group } = await admin
-      .from('groups')
-      .select('id')
-      .eq('slug', params.slug)
-      .maybeSingle();
-    if (!group) throw error(404, 'Group not found');
-
-    const { data: membership } = await admin
-      .from('group_memberships')
-      .select('role')
-      .eq('group_id', group.id)
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (membership?.role !== 'steward') return fail(403, { invite: { error: 'Stewards only.' } });
+  revokeInvite: async ({ params, request, locals }) => {
+    const ctx = await requireGroupRole(params, locals, 'steward');
+    if (!ctx.ok) return fail(ctx.status, { invite: { error: ctx.message } });
+    const { admin, group } = ctx;
 
     const data = await request.formData();
     const inviteId = String(data.get('invite_id') ?? '');
@@ -490,29 +427,10 @@ export const actions: Actions = {
   // Steward edits the group description inline. Empty string is a valid
   // value (clears the description). Capped at 500 chars to keep the
   // landing header from turning into a wall of text.
-  editDescription: async ({ params, request, locals: { safeGetSession } }) => {
-    gate();
-    const { user } = await safeGetSession();
-    if (!user) throw redirect(303, '/login');
-
-    const admin = adminClient();
-
-    const { data: group } = await admin
-      .from('groups')
-      .select('id')
-      .eq('slug', params.slug)
-      .maybeSingle();
-    if (!group) throw error(404, 'Group not found');
-
-    const { data: membership } = await admin
-      .from('group_memberships')
-      .select('role')
-      .eq('group_id', group.id)
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (membership?.role !== 'steward') {
-      return fail(403, { description: { error: 'Stewards only.' } });
-    }
+  editDescription: async ({ params, request, locals }) => {
+    const ctx = await requireGroupRole(params, locals, 'steward');
+    if (!ctx.ok) return fail(ctx.status, { description: { error: ctx.message } });
+    const { admin, group } = ctx;
 
     const data = await request.formData();
     const description = String(data.get('description') ?? '').trim();
@@ -537,29 +455,10 @@ export const actions: Actions = {
   // hatch — the expected rate is roughly never, but a misspelling caught
   // right after creation shouldn't force re-creating the group. Capped at
   // 100 chars; non-empty.
-  editName: async ({ params, request, locals: { safeGetSession } }) => {
-    gate();
-    const { user } = await safeGetSession();
-    if (!user) throw redirect(303, '/login');
-
-    const admin = adminClient();
-
-    const { data: group } = await admin
-      .from('groups')
-      .select('id')
-      .eq('slug', params.slug)
-      .maybeSingle();
-    if (!group) throw error(404, 'Group not found');
-
-    const { data: membership } = await admin
-      .from('group_memberships')
-      .select('role')
-      .eq('group_id', group.id)
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (membership?.role !== 'steward') {
-      return fail(403, { name: { error: 'Stewards only.' } });
-    }
+  editName: async ({ params, request, locals }) => {
+    const ctx = await requireGroupRole(params, locals, 'steward');
+    if (!ctx.ok) return fail(ctx.status, { name: { error: ctx.message } });
+    const { admin, group } = ctx;
 
     const data = await request.formData();
     const name = String(data.get('name') ?? '').trim();
