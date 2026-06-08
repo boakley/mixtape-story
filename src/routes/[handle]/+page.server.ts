@@ -27,37 +27,54 @@ export const load: PageServerLoad = async ({
 
   if (!profile) throw error(404, 'Mixtape not found');
 
-  const { data: rows, error: songsErr } = await supabase
-    .from('songs')
-    .select(
-      'id, position, title, artist, album, release_year, memory_year, album_art_url, songlink_url, links_by_platform, preview_url, link_status, stories(text)'
-    )
-    .eq('owner_id', profile.id)
-    .order('position');
+  // /{handle} shows the user's mixtape. Under share semantics each user
+  // has exactly one mixtape entity; it can be shared with N groups via
+  // the mixtape_group_shares table, but there's only one row's worth of
+  // songs and stories. Scoping song reads to the mixtape's id ensures
+  // we only see this user's content (defense in depth even though
+  // owner_id alone would work today).
+  const { data: personalMixtape } = await supabase
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profile.id)
+    .maybeSingle();
 
-  if (songsErr) throw error(500, songsErr.message);
+  // No mixtape (very old profile not yet backfilled) → page renders
+  // empty rather than 404; the profile still exists.
+  let songs: DisplaySong[] = [];
+  if (personalMixtape) {
+    const { data: rows, error: songsErr } = await supabase
+      .from('songs')
+      .select(
+        'id, position, title, artist, album, release_year, memory_year, album_art_url, songlink_url, links_by_platform, preview_url, link_status, stories(text)'
+      )
+      .eq('mixtape_id', personalMixtape.id)
+      .order('position');
 
-  const songs: DisplaySong[] = (rows ?? []).map((row) => {
-    const r = row as unknown as SongWithStory;
-    const storyRel = Array.isArray(r.stories) ? r.stories[0] : r.stories;
-    const storyText = storyRel?.text ?? '';
-    return {
-      id: r.id,
-      position: r.position,
-      title: r.title,
-      artist: r.artist,
-      album: r.album,
-      releaseYear: r.release_year,
-      memoryYear: r.memory_year,
-      albumArtUrl: r.album_art_url,
-      songlinkUrl: r.songlink_url,
-      linksByPlatform: r.links_by_platform,
-      previewUrl: r.preview_url,
-      linkStatus: r.link_status,
-      storyText,
-      storyHtml: renderStory(storyText)
-    };
-  });
+    if (songsErr) throw error(500, songsErr.message);
+
+    songs = (rows ?? []).map((row) => {
+      const r = row as unknown as SongWithStory;
+      const storyRel = Array.isArray(r.stories) ? r.stories[0] : r.stories;
+      const storyText = storyRel?.text ?? '';
+      return {
+        id: r.id,
+        position: r.position,
+        title: r.title,
+        artist: r.artist,
+        album: r.album,
+        releaseYear: r.release_year,
+        memoryYear: r.memory_year,
+        albumArtUrl: r.album_art_url,
+        songlinkUrl: r.songlink_url,
+        linksByPlatform: r.links_by_platform,
+        previewUrl: r.preview_url,
+        linkStatus: r.link_status,
+        storyText,
+        storyHtml: renderStory(storyText)
+      };
+    });
+  }
 
   const rawPref = cookies.get(LISTEN_PREF_COOKIE);
   const viewerPref: ListenPref | null = isListenPref(rawPref) ? rawPref : null;

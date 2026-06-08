@@ -637,7 +637,7 @@
       onfinalize={handleDndFinalize}
     >
       {#each songOrder as song (song.id)}
-        <li animate:flip={{ duration: 180 }} class="group">
+        <li animate:flip={{ duration: 180 }} class="group" data-testid="song-row">
           <!-- Compact single-line row -->
           <div class="flex items-center gap-2 px-2 py-1.5">
             <button

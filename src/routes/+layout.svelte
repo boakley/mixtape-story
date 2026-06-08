@@ -140,6 +140,15 @@
             >
               Mixtapes
             </a>
+            {#if data.features?.groups}
+              <a
+                href="/admin/groups"
+                onclick={closeMenu}
+                class="block py-1.5 pl-6 pr-3 text-sm text-ink hover:bg-rule hover:text-accent"
+              >
+                Groups
+              </a>
+            {/if}
             <a
               href="/admin/queue"
               onclick={closeMenu}

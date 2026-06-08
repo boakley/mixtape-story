@@ -2,65 +2,34 @@
   import { untrack } from 'svelte';
   import SongRow from '$lib/components/SongRow.svelte';
   import QrDialog from '$lib/components/QrDialog.svelte';
-  import {
-    LISTEN_PREF_COOKIE,
-    LISTEN_SERVICES,
-    OTHER_LISTEN_TOOLTIP,
-    type ListenPref
-  } from '$lib/listen';
+  import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
+  import ListenWithChip from '$lib/components/ListenWithChip.svelte';
+  import { type ListenPref } from '$lib/listen';
+  import { useStoredState } from '$lib/use-stored-state.svelte';
   import type { PageData } from './$types';
 
   type Props = { data: PageData };
   let { data }: Props = $props();
 
-  type View = 'expanded' | 'compact';
-  const STORAGE_KEY = 'mixtapestory:view';
-
-  let view = $state<View>('compact');
+  const view = useStoredState<View>(
+    'mixtapestory:view',
+    'compact',
+    (raw) => (raw === 'expanded' || raw === 'compact' ? raw : undefined)
+  );
   let qrOpen = $state(false);
 
   const mixtapeUrl = $derived(`https://mixtapestory.com/${data.handle}`);
 
   // Visitor "Listen with" preference. Seeded from the server-read cookie (so
   // SSR hrefs and the chip's active state match on first paint), then updated
-  // client-side on click — no reload needed, the per-song Listen hrefs
-  // recompute reactively from this. The $effect re-syncs when the server value
-  // changes (e.g. navigating between mixtapes); a local click doesn't change
+  // client-side via the ListenWithChip component (which owns the cookie
+  // write). The $effect re-syncs when the server value changes (e.g.,
+  // navigating between mixtapes); a local click doesn't change
   // data.viewerPref so it won't be clobbered.
   let listenPref = $state<ListenPref | null>(untrack(() => data.viewerPref));
   $effect(() => {
     listenPref = data.viewerPref;
   });
-
-  const listenOptions: Array<{ key: ListenPref | null; label: string; tooltip: string }> = [
-    ...(Object.entries(LISTEN_SERVICES) as Array<[ListenPref, { label: string; tooltip: string }]>).map(
-      ([key, svc]) => ({ key, label: svc.label, tooltip: svc.tooltip })
-    ),
-    { key: null, label: 'Other', tooltip: OTHER_LISTEN_TOOLTIP }
-  ];
-
-  function setListenPref(key: ListenPref | null) {
-    listenPref = key;
-    if (key) {
-      document.cookie = `${LISTEN_PREF_COOKIE}=${key}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-    } else {
-      document.cookie = `${LISTEN_PREF_COOKIE}=; path=/; max-age=0; samesite=lax`;
-    }
-  }
-
-  $effect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'compact' || saved === 'expanded') view = saved;
-  });
-
-  function setView(next: View) {
-    view = next;
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* storage may be disabled — non-fatal */
-    }
-  }
 
   const yearRange = $derived.by(() => {
     const years = data.songs
@@ -167,7 +136,7 @@
 
     <div class="mt-2 flex items-center justify-between gap-4">
       <div>
-        <p class="text-sm text-ink-muted">
+        <p class="text-sm text-ink-muted" data-testid="mixtape-meta">
           {data.songs.length} songs{yearRange ? ` · ${yearRange}` : ''}
         </p>
         {#if isOwner && data.visitorCount !== null}
@@ -178,46 +147,12 @@
         {/if}
       </div>
 
-      <div class="inline-flex rounded-full border border-rule p-0.5 text-xs">
-        <button
-          type="button"
-          onclick={() => setView('expanded')}
-          aria-pressed={view === 'expanded'}
-          class="rounded-full px-3 py-1 transition-colors {view === 'expanded'
-            ? 'bg-ink text-paper'
-            : 'text-ink-muted hover:text-ink'}"
-        >
-          Expanded
-        </button>
-        <button
-          type="button"
-          onclick={() => setView('compact')}
-          aria-pressed={view === 'compact'}
-          class="rounded-full px-3 py-1 transition-colors {view === 'compact'
-            ? 'bg-ink text-paper'
-            : 'text-ink-muted hover:text-ink'}"
-        >
-          Compact
-        </button>
-      </div>
+      <ViewToggle bind:view={view.value} />
     </div>
 
-    <p class="mt-3 text-sm text-ink-muted">
-      <span id="listen-with-label" class="mr-1">Listen with:</span><span
-        role="group"
-        aria-labelledby="listen-with-label"
-      >{#each listenOptions as opt, i}{#if i > 0}<span
-            aria-hidden="true"
-            class="mx-2 align-middle text-base text-ink-muted">·</span>{/if}<button
-            type="button"
-            onclick={() => setListenPref(opt.key)}
-            aria-pressed={listenPref === opt.key}
-            title={opt.tooltip}
-            class={listenPref === opt.key
-              ? 'text-ink underline decoration-accent decoration-2 underline-offset-4'
-              : 'text-ink-muted hover:text-accent'}
-          >{opt.label}</button>{/each}</span>
-    </p>
+    <div class="mt-3">
+      <ListenWithChip bind:listenPref />
+    </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
       {#if isOwner}
@@ -298,7 +233,7 @@
     <p class="text-ink-muted">No songs yet.</p>
   {:else}
     {#each data.songs as song (song.id)}
-      <SongRow {song} {view} {listenPref} />
+      <SongRow {song} view={view.value} {listenPref} />
     {/each}
   {/if}
 

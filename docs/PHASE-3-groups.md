@@ -5,6 +5,7 @@
 
 **Divergences from the source doc:**
 - The group landing is **three tabs** (Member mixtapes default · Songs we share · All songs), not directory-only. Decided 2026-05-26.
+- Mixtape-in-group is **share, not copy**. The source doc and an earlier 3a iteration treated each group-scoped mixtape as a separate row that needed to be re-populated; both fought the user's expectation that editing "my mixtape" should propagate. Decided 2026-06-06 after the writing-group test exposed the conflict. Implementation: a `mixtape_group_shares` join table; `mixtapes.group_id` and the `'group'` visibility value are removed.
 - The **year column is removed** from song views (personal + group); the **rail + accent dots are kept** for the bulleted-list-with-spine look. `memory_year` is kept as the "This song reminds me of …" in-story lead-in but no longer a structural sort key. Decided 2026-06-05 after low adoption signal; the `SongRow.svelte` change is already live on the personal page.
 - Stories in the song views (Songs we share, All songs) are **truncated to the first ~2 sentences with an inline `[more]` toggle**. Personal mixtape view keeps full-length stories.
 - Group description is **editable inline by stewards** via a pencil affordance at the end of the description text.
@@ -25,7 +26,7 @@ Phase 3 closes all three at writing-group scale, gated behind `FEATURES_GROUPS` 
 |---|---|
 | Group URL shape | `/g/{slug}` (landing), `/g/{slug}/{handle}` (member mixtape), `/g/{slug}/i/{code}` (invite) |
 | User profile | `/u/{handle}` — viewer-aware listing; `/{handle}` keeps its personal-mixtape role |
-| Mixtape home | One scope per mixtape: personal (`/{handle}`) or one group; moving home redirects when viewer has permission, warns creator |
+| Mixtape home | One mixtape entity per user (v1). It can be shared with N groups via a `mixtape_group_shares` join table; edits propagate everywhere it's shared because there's only one row. Divergent versions for different audiences are achieved by making a *different* mixtape entity (v1.5+, `/u/{handle}/{slug}` per `design-groups.md` §1a). |
 | Mode | Anthology only in v1; collective deferred |
 | Joining | Invite-code only; no request-to-join (WhatsApp covers that) |
 | Roles | Steward (creator + delegates) and member |
@@ -65,7 +66,7 @@ Worth staging as 3a / 3b / 3c — see *Scope honesty* at the bottom. The list re
 
 ### 3a — Minimal joinable shell
 
-1. **Schema migration.** Create `groups`, `group_memberships`, `group_invites`, `guest_links`. Add `mixtapes.group_id`. Expand `visibility` enum to `private / unlisted / group / public` (rename `'link'` → `'unlisted'` in the same migration, with a data-fix step). Add Postgres CHECK constraint enforcing `visibility = 'group'` iff `group_id IS NOT NULL`. Full shapes in `design-groups.md#data-model-additions`.
+1. **Schema migration.** Create `groups`, `group_memberships`, `group_invites`, `guest_links`. Add `mixtapes.group_id`. Expand `visibility` enum to `private / unlisted / group / public` (rename `'link'` → `'unlisted'` in the same migration, with a data-fix step). Add Postgres CHECK constraint enforcing `visibility = 'group'` iff `group_id IS NOT NULL`. Full shapes in `design-groups.md#data-model-additions`. **Backfill rule:** every existing profile gets one personal mixtape (visibility=`'unlisted'`, group_id=`null`); the onboarding flow does the same for new signups. This keeps the "every profile has a personal mixtape entity" invariant — the empty-mixtape-is-OK assumption is what lets the editor write songs without JIT-create logic, and the landing's filter (step 9) is what keeps empty rows from cluttering directories.
 2. **RLS policies.** Group-scoped mixtape reads require membership OR a valid `GuestLink.token`. Group landing + member list require membership. Audit with `supabase db advisors` after.
 3. **Reserved-word lists.** Add `g` and `u` to `src/lib/handles/reserved.ts`. Create a separate group-slug denylist (system terms + brand terms). Validate at group create.
 4. **Feature flag plumbing.** Read `FEATURES_GROUPS` from `$env/dynamic/private`; gate routes, settings UI, and the mixtape-home picker. When off, `/g/*` and `/u/*` return 404.
@@ -73,7 +74,7 @@ Worth staging as 3a / 3b / 3c — see *Scope honesty* at the bottom. The list re
 6. **Invite-code lifecycle.** Human-pickable codes (4–32 chars, lowercase ASCII + hyphens). Steward can set expiry, use-cap, revoke. Per-IP rate limit on invite-attempts to keep brute force impractical at short code lengths.
 7. **Signed-in invite flow.** `/g/{slug}/i/{code}` → validate code, join, redirect to `/g/{slug}`. Already-member redirects to the landing with a "You're already in" toast.
 8. **New-user invite flow.** *Most design weight here.* The brand-new visitor lands at `/g/{slug}/i/{code}`, sees "You've been invited to {Group Name}. {one-line product blurb.} Enter your email to join." Magic link carries invite intent **in the URL** (not a session cookie — cookies break the laptop→phone case). Single-step verify-and-join. Lands on `/g/{slug}` with a "Welcome — create your mixtape →" CTA. Target: <5 min from invite click to first mixtape on the page.
-9. **`/g/{slug}` landing — Member mixtapes tab.** Name + description + cards, sorted by `updated_at desc`. Card visual matches `docs/mockups/whatsapp-unfurl.html` so the OG-unfurl and the landing share one design moment.
+9. **`/g/{slug}` landing — Member mixtapes tab.** Name + description + cards, sorted by `updated_at desc`. Card visual matches `docs/mockups/whatsapp-unfurl.html` so the OG-unfurl and the landing share one design moment. Empty mixtapes (`songCount = 0`) are **filtered out** of the directory — the landing is "look what we've made", not a join roster; silent members are reflected in the `memberCount` only. **Exception:** the viewer's own row appears even when empty, with a "Add a song to make this visible to the group" hint, so they can see themselves while contributing. The header's mixtape count uses the active (`songCount ≥ 1`) count, not the array length.
 10. **`/g/{slug}/{handle}` mixtape page.** Reuse the existing `/{handle}` `+page.svelte` renderer; the difference is purely the load + RLS path.
 11. **Non-member view of `/g/{slug}`.** Name + description + "Join with invite code" field (paste a code or full invite URL). No member list, no mixtape list. Group slug doesn't exist → 404 (no probing for valid slugs).
 12. **Error states.** Under-informative on purpose: revoked / expired / never-existed codes all read "This invite is no longer active. Ask the group's leader for a new link."
@@ -82,7 +83,7 @@ Worth staging as 3a / 3b / 3c — see *Scope honesty* at the bottom. The list re
 
 13. **`/u/{handle}` profile page.** Viewer-aware listing of the user's mixtapes across scopes. Anonymous viewer sees public only; group members see that group's mixtape; owner sees everything.
 14. **"Songs we share" + "All songs" tabs.** See *Landing page — three tabs* below. Same component, different filter; tab strip + sub-intro per tab.
-15. **Move-mixtape-between-scopes flow.** Mixtape settings: "This mixtape lives in" → personal / one of your groups. On move, update URL; if viewer can see both old and new, redirect old → new. Creator warning: "Links you've shared previously may stop working."
+15. **Share-mixtape-with-group flow.** Wired via `?/shareWith` (inserts a row in `mixtape_group_shares`) and `?/unshareFrom` (deletes it). One mixtape entity per user; sharing adds an edge to a group. Edits at `/{handle}/edit` propagate everywhere the mixtape is shared because the songs and stories live on one row. **No copy, no snapshot, no divergence** — by design. For divergent versions, a user makes a second mixtape entity (v1.5+).
 
 ### 3c — Niceties
 

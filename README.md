@@ -119,6 +119,34 @@ flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
   SUPABASE_SERVICE_ROLE_KEY=… PUBLIC_SUPABASE_URL=… pnpm tsx scripts/migrate-seeds.ts --apply
   ```
 
+- **Local demo group**: `scripts/seed-group.ts` populates the local DB with a
+  ready-made group (`writing-meditation`) holding 4 personas — bryan as
+  steward, tim/diane/jack as members — each with their own mixtape from
+  `src/lib/seed/<handle>.csv`. The CSVs share three songs ("The Toast",
+  "Taxi", "Tea for One") so the group landing page has real overlap to show.
+  Re-runnable; refuses to run unless `PUBLIC_SUPABASE_URL` points at
+  localhost.
+
+  ```sh
+  # Nuclear: drops the local DB, re-applies migrations, seeds the demo
+  # group. All four personas become fake `<handle>@e2e.local` accounts.
+  pnpm reset:demo
+
+  # Just the seed step (dry-run first; --apply writes):
+  node --env-file=.env.local --experimental-strip-types scripts/seed-group.ts
+  node --env-file=.env.local --experimental-strip-types scripts/seed-group.ts --apply
+  ```
+
+  Want `bryan` to be your *real* magic-link account instead of a fake?
+  Don't use `pnpm reset:demo`. Do the long flow: `pnpm exec supabase db
+  reset` → sign in as bryan via the dev server → `pnpm tsx
+  scripts/migrate-seeds.ts --apply` → then the seed-group `--apply`
+  command above. It detects bryan's existing profile + songs, skips the
+  CSV import for him, and just adds diane/jack and wires up the group.
+
+  Visit `http://localhost:5173/g/writing-meditation` (signed in as any of
+  the four) to see the result.
+
 - **Resolution worker**: Edge Function at `supabase/functions/resolve-queue/`,
   triggered every minute by `pg_cron`. Migration 0006 scheduled the first version
   of the job; migration 0009 rewrote it to read its secrets from **Supabase
@@ -157,3 +185,17 @@ flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
   gated by the `ADMIN_EMAILS` env var — comma-separated, lowercase-compared. Set it
   via `wrangler pages secret put ADMIN_EMAILS` for production and in `.env.local`
   for dev.
+
+## Testing
+
+The test suite is organized as the executable version of the v1 user journey —
+read top-to-bottom, the `e2e/` directory is a narrated tour of the product.
+
+```sh
+pnpm run test:unit       # Vitest: fast, no browser
+pnpm run test:e2e        # Playwright (headed locally so you can watch)
+pnpm run test:e2e:ui     # Playwright UI mode for debugging
+```
+
+Philosophy, page-object design, fixtures, and the deliberate omissions live in
+[`docs/TESTING.md`](docs/TESTING.md).
