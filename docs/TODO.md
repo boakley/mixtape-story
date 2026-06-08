@@ -65,6 +65,13 @@ freely.
   parser; an E2E pass would cover the gate-wiring on every route.
   Probably needs a separate playwright config or env override
   (the default config runs with FEATURES_GROUPS=1 from .env.local).
+* E2E suite uses `page.waitForLoadState('networkidle')` in ~8 places
+  (pages/mixtape.ts, pages/group.ts, specs 01/08/13) as a hydration
+  fence. Playwright's docs mark networkidle as discouraged — it can
+  be slow and isn't a real "hydrated" signal. Pick one replacement
+  and apply uniformly: probably a `data-hydrated="true"` attribute
+  the root layout sets in `onMount`, then `page.locator('html[data-
+  hydrated]').waitFor()`. Cleanup pass, ~30 min.
 * mixtape masthead: visitor-count "Display" preference. The doc
   (`docs/implementation-notes.md` §1) calls for a creator toggle in
   the `☰` to hide the visitor count from the meta line — for the

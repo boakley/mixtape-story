@@ -211,8 +211,11 @@
       </p>
     {/if}
     {#if data.isMember}
-      <p class="mt-2 text-xs text-ink-muted" data-testid="group-meta">
-        {data.memberCount} {data.memberCount === 1 ? 'member' : 'members'} · {data.activeMixtapeCount} {data.activeMixtapeCount === 1 ? 'mixtape' : 'mixtapes'}
+      <!-- Single-line meta, same treatment as the mixtape page's
+           {N songs · year range · M visitors} line. -->
+      <p class="mt-2 text-sm text-ink-muted" data-testid="group-meta">
+        {data.memberCount} {data.memberCount === 1 ? 'member' : 'members'} · {data.activeMixtapeCount}
+        {data.activeMixtapeCount === 1 ? 'mixtape' : 'mixtapes'}
       </p>
     {/if}
   </header>

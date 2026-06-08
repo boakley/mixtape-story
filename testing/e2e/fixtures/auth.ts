@@ -132,3 +132,30 @@ export function workerGroupSlug(base: string): string {
   const idx = process.env.TEST_WORKER_INDEX ?? '0';
   return `e2e-w${idx}-${base}`;
 }
+
+/**
+ * For tests that need a real Listen <a> link to render (rather than
+ * the disabled `→ Listen` span or the PreviewButton), mark every song
+ * owned by a profile as resolved. Sets `link_status='done'` with a
+ * placeholder `songlink_url` so SongRow's listenHref returns a usable
+ * destination when there's no preference.
+ *
+ * Per-platform deep links aren't populated, so once the visitor picks
+ * a service the listenHref falls through to the service's public
+ * search URL — that's still a valid "Listen with this service"
+ * destination and any assertion that checks the URL's host will be
+ * satisfied.
+ *
+ * Use this when a test's intent is to exercise the Listen-click path
+ * (the chooser modal, deep-link routing) rather than the resolver.
+ */
+export async function markAllSongsResolved(profileId: string): Promise<void> {
+  const { error } = await admin
+    .from('songs')
+    .update({
+      link_status: 'done',
+      songlink_url: 'https://song.link/i/0000000000'
+    })
+    .eq('owner_id', profileId);
+  if (error) throw new Error(`markAllSongsResolved(${profileId}): ${error.message}`);
+}
