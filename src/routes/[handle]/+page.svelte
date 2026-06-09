@@ -418,7 +418,12 @@
         </a>
       </p>
     {/if}
-    <p class="text-xs">mixtapestory.com — Share the songs, share the stories.</p>
+    <div class="flex items-baseline justify-between gap-3 text-xs">
+      <p>mixtapestory.com — Share the songs, share the stories.</p>
+      <a href="/privacy" class="shrink-0 underline decoration-rule underline-offset-4 hover:text-accent"
+        >Privacy</a
+      >
+    </div>
   </footer>
 </main>
 

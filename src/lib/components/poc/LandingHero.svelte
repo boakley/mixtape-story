@@ -51,4 +51,9 @@
   {/if}
 
   <p class="mt-12 text-xs italic text-ink-muted">In private testing.</p>
+  <p class="mt-2 text-xs text-ink-muted">
+    <a href="/privacy" class="underline decoration-rule underline-offset-4 hover:text-accent"
+      >Privacy</a
+    >
+  </p>
 </main>
