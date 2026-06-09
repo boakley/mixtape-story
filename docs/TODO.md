@@ -6,13 +6,9 @@ on purpose — these are notes to think with, not tickets. Cull / fold
 freely.
 
 * fix ux design issues
-  * header stuff: streaming choice, etc) takes up a lot of vertical space
   * should the list of mixtapes in a group be expandable
     Right now I can click to jump to a mixtape, but it might be
     nice to drill into it without having to leave the page
-  * all form fields need a (?)
-  * it wasn't obvious to some users that a song could be clicked on
-    in the compact view to see the story
 * features:
   * can we add the ability to start with an actual apple music (or spotify?)
     playlist? Can we have a "play this playlist on apple music" link?

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionData, PageData } from './$types';
 
   type Props = { data: PageData; form: ActionData };
@@ -21,7 +22,13 @@
 
   <form method="POST" use:enhance class="mt-8 space-y-3">
     <label class="block">
-      <span class="text-xs uppercase tracking-wider text-ink-muted">Handle</span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="text-xs uppercase tracking-wider text-ink-muted">Handle</span>
+        <HelpTip label="Handle">
+          The URL slug for your mixtape page. Lowercase letters, digits,
+          and hyphens, 2–32 characters. Permanent once claimed.
+        </HelpTip>
+      </span>
       <div class="mt-1 flex items-center rounded-md border border-rule bg-paper">
         <span class="px-3 py-2 text-sm text-ink-muted">mixtapestory.com/</span>
         <input
@@ -41,7 +48,13 @@
     </label>
 
     <label class="block">
-      <span class="text-xs uppercase tracking-wider text-ink-muted">Display name</span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="text-xs uppercase tracking-wider text-ink-muted">Display name</span>
+        <HelpTip label="Display name">
+          How your name appears on your mixtape and stories. Doesn't
+          have to match your handle. Change later from settings.
+        </HelpTip>
+      </span>
       <input
         type="text"
         name="display_name"

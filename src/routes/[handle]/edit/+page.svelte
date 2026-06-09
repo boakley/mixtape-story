@@ -4,6 +4,7 @@
   import { dndzone, type DndEvent } from 'svelte-dnd-action';
   import { flip } from 'svelte/animate';
   import PreviewButton from '$lib/components/PreviewButton.svelte';
+  import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionResult } from '@sveltejs/kit';
   import type { ActionData, PageData } from './$types';
 
@@ -410,10 +411,17 @@
 
       {#if mode === 'list'}
         <form method="POST" action="?/parse_list" use:enhance class="space-y-3">
-          <label class="block text-sm text-ink-muted" for="list-input">
-            Paste a list of songs. One song per line, or one per quoted title.
-            Each line is matched against the Apple Music catalog.
-          </label>
+          <span class="inline-flex items-center gap-1.5">
+            <label class="block text-sm text-ink-muted" for="list-input">
+              Paste a list of songs. One song per line, or one per quoted title.
+              Each line is matched against the Apple Music catalog.
+            </label>
+            <HelpTip label="Paste a list">
+              Paste from a playlist, an email, or just type. We match each
+              line to Apple Music; you'll review and confirm before any
+              songs are added.
+            </HelpTip>
+          </span>
           <textarea
             id="list-input"
             name="text"
@@ -431,9 +439,15 @@
       {:else}
         <!-- Search picker -->
         <div class="space-y-3">
-          <label class="block text-sm text-ink-muted" for="search-input">
-            Type a song title and artist. Pick the right match from the list.
-          </label>
+          <span class="inline-flex items-center gap-1.5">
+            <label class="block text-sm text-ink-muted" for="search-input">
+              Type a song title and artist. Pick the right match from the list.
+            </label>
+            <HelpTip label="Search">
+              Searches the Apple Music catalog as you type. If nothing
+              matches, the URL paste and Add manually options appear below.
+            </HelpTip>
+          </span>
           <input
             id="search-input"
             type="search"
@@ -533,9 +547,15 @@
               }}
               class="space-y-2 rounded-md border border-rule p-3"
             >
-              <label class="block text-xs text-ink-muted" for="url-input">
-                Paste a Spotify, YouTube Music, or other streaming URL.
-              </label>
+              <span class="inline-flex items-center gap-1.5">
+                <label class="block text-xs text-ink-muted" for="url-input">
+                  Paste a Spotify, YouTube Music, or other streaming URL.
+                </label>
+                <HelpTip label="Streaming URL">
+                  Songlink/Odesli resolves any service URL into a universal
+                  link that opens in the listener's preferred app.
+                </HelpTip>
+              </span>
               <div class="flex items-center gap-2">
                 <input
                   id="url-input"
@@ -803,6 +823,11 @@
               <input type="hidden" name="song_id" value={song.id} />
               <label class="flex items-center gap-2 text-sm text-ink-muted">
                 <span>This song reminds me of the year</span>
+                <HelpTip label="Memory year">
+                  Optional. The year you most associate with this song —
+                  not necessarily its release year. Used as a lead-in on
+                  some stories.
+                </HelpTip>
                 <input
                   type="number"
                   name="memory_year"
@@ -813,6 +838,14 @@
                   class="w-20 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink"
                 />
               </label>
+              <span class="inline-flex items-center gap-1.5">
+                <span class="text-sm text-ink-muted">Story</span>
+                <HelpTip label="Story">
+                  Why does this song matter to you? Markdown is supported.
+                  Stories are optional — a mixtape with no stories is still
+                  a mixtape.
+                </HelpTip>
+              </span>
               <textarea
                 name="text"
                 aria-label="Story for this song"

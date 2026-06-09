@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionData, PageData } from './$types';
 
   type Props = { data: PageData; form: ActionData };
@@ -21,7 +22,13 @@
 
   <form method="POST" use:enhance class="mt-8 space-y-4">
     <label class="block">
-      <span class="text-xs uppercase tracking-wider text-ink-muted">URL slug</span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="text-xs uppercase tracking-wider text-ink-muted">URL slug</span>
+        <HelpTip label="URL slug">
+          The URL fragment for your group's page. Lowercase letters,
+          digits, and hyphens, 3–32 characters. Permanent once created.
+        </HelpTip>
+      </span>
       <div class="mt-1 flex items-center rounded-md border border-rule bg-paper">
         <span class="px-3 py-2 text-sm text-ink-muted">mixtapestory.com/g/</span>
         <input
@@ -41,7 +48,13 @@
     </label>
 
     <label class="block">
-      <span class="text-xs uppercase tracking-wider text-ink-muted">Display name</span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="text-xs uppercase tracking-wider text-ink-muted">Display name</span>
+        <HelpTip label="Display name">
+          The name shown above the group's page. Doesn't have to match
+          the URL slug. Editable later.
+        </HelpTip>
+      </span>
       <input
         type="text"
         name="name"
@@ -55,7 +68,13 @@
     </label>
 
     <label class="block">
-      <span class="text-xs uppercase tracking-wider text-ink-muted">Description</span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="text-xs uppercase tracking-wider text-ink-muted">Description</span>
+        <HelpTip label="Description">
+          A short sentence telling people what your group is about.
+          Shown on the group's landing page. Editable later.
+        </HelpTip>
+      </span>
       <textarea
         name="description"
         rows="3"

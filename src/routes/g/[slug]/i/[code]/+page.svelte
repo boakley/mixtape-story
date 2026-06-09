@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionData, PageData } from './$types';
 
   type Props = { data: PageData; form: ActionData };
@@ -35,7 +36,13 @@
     {:else}
       <form method="POST" action="?/requestInvite" use:enhance class="mt-8 space-y-3">
         <label class="block">
-          <span class="text-xs uppercase tracking-wider text-ink-muted">Email</span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="text-xs uppercase tracking-wider text-ink-muted">Email</span>
+            <HelpTip label="Email">
+              We email you a one-time link to confirm. The invite rides
+              along, so you can open the email on any device.
+            </HelpTip>
+          </span>
           <input
             type="email"
             name="email"

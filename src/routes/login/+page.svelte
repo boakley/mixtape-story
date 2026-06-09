@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionData } from './$types';
 
   type Props = { form: ActionData };
@@ -30,7 +31,13 @@
   {:else}
     <form method="POST" use:enhance class="mt-8 space-y-3">
       <label class="block">
-        <span class="text-xs uppercase tracking-wider text-ink-muted">Email</span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="text-xs uppercase tracking-wider text-ink-muted">Email</span>
+          <HelpTip label="Email">
+            We email you a one-time sign-in link — no passwords. Use the
+            same email each time so your mixtape stays attached.
+          </HelpTip>
+        </span>
         <input
           type="email"
           name="email"
