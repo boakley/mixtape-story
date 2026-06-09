@@ -49,11 +49,15 @@ export async function requireMixtapeOwner(
     return { ok: false, status: 403, message: 'Not your mixtape.' };
   }
 
+  // Migration 0016 nulled `group_id` on every personal mixtape and
+  // we don't write non-null group_ids back in v1, so a profile has
+  // exactly one mixtape row. The earlier `.is('group_id', null)`
+  // filter looked defensive but doesn't actually match against
+  // seeded data — same fix as the personalMixtape load query.
   const { data: mixtape } = await admin
     .from('mixtapes')
     .select('id')
     .eq('profile_id', user.id)
-    .is('group_id', null)
     .maybeSingle();
   if (!mixtape) {
     return { ok: false, status: 500, message: 'No mixtape to edit. Contact support.' };

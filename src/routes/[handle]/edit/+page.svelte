@@ -576,6 +576,7 @@
               <input
                 type="text"
                 name="title"
+                aria-label="Song title"
                 placeholder="Song title"
                 required
                 class="w-full rounded-md border border-rule px-3 py-2 text-sm"
@@ -583,12 +584,14 @@
               <input
                 type="text"
                 name="artist"
+                aria-label="Artist"
                 placeholder="Artist"
                 class="w-full rounded-md border border-rule px-3 py-2 text-sm"
               />
               <input
                 type="text"
                 name="album"
+                aria-label="Album (optional)"
                 placeholder="Album (optional)"
                 class="w-full rounded-md border border-rule px-3 py-2 text-sm"
               />
@@ -757,6 +760,7 @@
               <input
                 type="text"
                 name="title"
+                aria-label="Title"
                 value={song.title}
                 placeholder="Title"
                 required
@@ -765,6 +769,7 @@
               <input
                 type="text"
                 name="artist"
+                aria-label="Artist"
                 value={song.artist ?? ''}
                 placeholder="Artist"
                 class="w-full rounded-md border border-rule bg-paper px-3 py-1.5 text-sm"
@@ -772,6 +777,7 @@
               <input
                 type="text"
                 name="album"
+                aria-label="Album"
                 value={song.album ?? ''}
                 placeholder="Album"
                 class="w-full rounded-md border border-rule bg-paper px-3 py-1.5 text-sm"
@@ -809,6 +815,7 @@
               </label>
               <textarea
                 name="text"
+                aria-label="Story for this song"
                 rows="6"
                 maxlength={STORY_MAX}
                 bind:value={storyDraft}
