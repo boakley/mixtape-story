@@ -170,11 +170,17 @@ create index group_invites_group_active_idx on group_invites (group_id)
 -- Grants read access to a single mixtape for someone outside the group,
 -- without granting group membership. Token defaults to a random 32-char
 -- hex string at insert time (16 bytes of entropy is plenty at our scale).
+--
+-- gen_random_bytes comes from pgcrypto, which hosted Supabase installs
+-- into the `extensions` schema — and the migration search_path doesn't
+-- include it, so both the enable and the call must be explicit.
+
+create extension if not exists pgcrypto with schema extensions;
 
 create table guest_links (
   id           uuid primary key default gen_random_uuid(),
   mixtape_id   uuid not null references mixtapes(id) on delete cascade,
-  token        text unique not null default encode(gen_random_bytes(16), 'hex'),
+  token        text unique not null default encode(extensions.gen_random_bytes(16), 'hex'),
   created_by   uuid not null references profiles(id) on delete restrict,
   created_at   timestamptz not null default now(),
   expires_at   timestamptz,
