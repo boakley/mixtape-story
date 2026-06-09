@@ -1,6 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { PUBLIC_SITE_URL } from '$env/static/public';
-import { isFeatureAvailable } from '$lib/server/features';
 import { adminClient } from '$lib/server/supabase-admin';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -25,19 +24,11 @@ import type { Actions, PageServerLoad } from './$types';
 // surface the same "no longer active" message — prevents brute-force
 // enumeration and doesn't leak steward behavior.
 
-function gate(user: { email?: string | null } | null) {
-  if (!isFeatureAvailable('groups', user)) throw error(404, 'Not Found');
-}
-
 type AnonState =
   | { status: 'welcome'; group: { name: string; slug: string } }
   | { status: 'invalid'; group: { name: string; slug: string } };
 
 export const load: PageServerLoad = async ({ params, locals: { safeGetSession } }) => {
-  // Get user before the gate so admin-bypass works.
-  const { user: gateUser } = await safeGetSession();
-  gate(gateUser);
-
   const admin = adminClient();
 
   // The group has to exist; if not, 404 (slug-existence isn't a probe
@@ -136,7 +127,6 @@ export const actions: Actions = {
   // takes over.
   requestInvite: async ({ request, params, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
-    gate(user);
 
     const data = await request.formData();
     const email = String(data.get('email') ?? '').trim();

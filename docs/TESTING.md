@@ -248,7 +248,7 @@ Honest snapshot of what's wired today vs. what's still pending:
 
 - **Framework, fixtures, page objects, scripts**: fully wired.
 - **14 spec files (01–15, no 06), all active**: 21 journeys × two device projects = 42 test executions per run, green in ~15s against the local stack. No `test.skip()` scaffolds remain.
-- **69 unit tests across 7 files**: reserved-handle and reserved-slug denylists, `listenHref` routing, `safeRedirect` hardening, feature-flag parsing, story truncation, and the tag-format check. Pass in well under a second.
+- **47 unit tests across 6 files**: reserved-handle and reserved-slug denylists, `listenHref` routing, `safeRedirect` hardening, story truncation, and the tag-format check. Pass in well under a second. (Was 69/7 — the feature-flag parser and its tests retired with the `FEATURES_GROUPS` flag when groups went permanently live.)
 - **06-ask-about-a-song**: still not written (the `wa.me` deep-link surface it would test isn't built in the product); its number stays reserved.
 - **CI**: not yet configured. The local commands above work; a workflow file lands when prod has CI infrastructure.
 - **ReportPortal**: not yet wired. The integration sketched in *Reporting* above is the target, not the current state.
