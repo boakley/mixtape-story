@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BrandCap from '$lib/components/BrandCap.svelte';
   import { enhance, deserialize, applyAction } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
   import { dndzone, type DndEvent } from 'svelte-dnd-action';
@@ -252,9 +253,7 @@
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">
   <header class="mb-6 sm:mb-8">
-    <p class="text-xs uppercase tracking-wider text-ink-muted">
-      <a href="/" class="hover:text-accent">mixtapestory.com</a>
-    </p>
+    <BrandCap />
     <div class="mt-2 flex items-baseline justify-between gap-3">
       <h1 class="text-3xl leading-tight text-ink sm:text-4xl">
         {data.displayName}'s mixtape — edit

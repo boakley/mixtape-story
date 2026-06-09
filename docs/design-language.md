@@ -37,7 +37,7 @@ anywhere yet; reserved for the day a long-form reading mode lands.
 
 | Use | Class | Notes |
 |---|---|---|
-| Brand cap line ("MIXTAPESTORY.COM") | `text-xs uppercase tracking-wider text-ink-muted` | The link back home, top-left of every page. |
+| Brand cap line ("MIXTAPESTORY.COM") | `text-[10px] uppercase tracking-wide text-ink-muted` | The link back home, top-left of every page. Smaller and tighter than `text-xs`/`tracking-wider` so it reads as a quiet wayfinding mark, not a heading. Rendered by `BrandCap.svelte` — edit it there, not per page. |
 | Page title (h1) | `text-3xl sm:text-4xl leading-tight text-ink` | Group/mixtape name. |
 | Song title (h2/h3) | `text-xl sm:text-2xl leading-tight text-ink` | Inside expanded SongRow. |
 | Body | `text-base text-ink` | Story bodies. |

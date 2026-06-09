@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BrandCap from '$lib/components/BrandCap.svelte';
   import type { PageData } from './$types';
 
   type Props = { data: PageData };
@@ -63,9 +64,7 @@
 
 <main class="mx-auto max-w-4xl px-5 py-8 sm:px-6 sm:py-12">
   <header class="mb-6">
-    <p class="text-xs uppercase tracking-wider text-ink-muted">
-      <a href="/" class="hover:text-accent">mixtapestory.com</a>
-    </p>
+    <BrandCap />
     <h1 class="mt-2 text-3xl text-ink">All groups</h1>
     <p class="mt-1 text-sm text-ink-muted">{data.counts.all} total</p>
   </header>

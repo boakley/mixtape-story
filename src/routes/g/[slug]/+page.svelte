@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BrandCap from '$lib/components/BrandCap.svelte';
   import { enhance } from '$app/forms';
   import { untrack } from 'svelte';
   import ViewToggle, { type View } from '$lib/components/ViewToggle.svelte';
@@ -125,9 +126,7 @@
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">
   <header class="mb-6 sm:mb-8">
-    <p class="text-xs uppercase tracking-wider text-ink-muted">
-      <a href="/" class="hover:text-accent">mixtapestory.com</a>
-    </p>
+    <BrandCap />
     {#if editingName}
       <InlineEdit
         bind:open={editingName}

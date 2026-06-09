@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BrandCap from '$lib/components/BrandCap.svelte';
   import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -245,12 +246,7 @@
          it instead of underneath. Managing-this-mixtape items (Edit,
          QR, Listen with) live inside that menu contextually. -->
     <div class="flex items-center justify-between pr-12">
-      <a
-        href="/"
-        class="text-xs uppercase tracking-wider text-ink-muted hover:text-accent"
-      >
-        mixtapestory.com
-      </a>
+      <BrandCap />
       <button
         type="button"
         onclick={handleShare}

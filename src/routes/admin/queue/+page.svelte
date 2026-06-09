@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BrandCap from '$lib/components/BrandCap.svelte';
   import { onMount } from 'svelte';
 
   type Pending = {
@@ -84,9 +85,7 @@
 
 <main class="mx-auto max-w-4xl px-5 py-8 sm:px-6 sm:py-12">
   <header class="mb-6">
-    <p class="text-xs uppercase tracking-wider text-ink-muted">
-      <a href="/" class="hover:text-accent">mixtapestory.com</a>
-    </p>
+    <BrandCap />
     <h1 class="mt-2 text-3xl text-ink">Resolution queue</h1>
     <p class="text-sm text-ink-muted">Refreshes every 30s.</p>
   </header>

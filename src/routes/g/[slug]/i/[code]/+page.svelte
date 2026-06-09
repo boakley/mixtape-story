@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BrandCap from '$lib/components/BrandCap.svelte';
   import { enhance } from '$app/forms';
   import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionData, PageData } from './$types';
@@ -14,9 +15,7 @@
 </svelte:head>
 
 <main class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
-  <p class="text-xs uppercase tracking-wider text-ink-muted">
-    <a href="/" class="hover:text-accent">mixtapestory.com</a>
-  </p>
+  <BrandCap />
 
   {#if data.status === 'welcome'}
     <h1 class="mt-2 text-3xl leading-tight text-ink">You've been invited to {data.group.name}.</h1>
