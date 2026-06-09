@@ -280,8 +280,7 @@
     {#if activeTab.value === 'mixtapes'}
       {#if data.mixtapes.length === 0}
         <section class="mt-4 rounded-md border border-rule bg-paper p-5">
-          <p class="text-sm text-ink">No mixtapes here yet.</p>
-          <p class="mt-1 text-sm text-ink-muted">Be the first.</p>
+          <p class="text-sm text-ink">No mixtapes here yet. Be the first.</p>
 
           {#if !data.viewerHasGroupMixtape}
             <form method="POST" action="?/shareWith" use:enhance class="mt-4">
@@ -395,7 +394,7 @@
     {:else if activeTab.value === 'all'}
       {#if data.songs.length === 0}
         <section class="mt-4 rounded-md border border-rule bg-paper p-5">
-          <p class="text-sm text-ink">No songs yet — be the first.</p>
+          <p class="text-sm text-ink">No songs yet. Be the first.</p>
         </section>
       {:else}
         <div class="mt-4 flex items-center justify-between gap-3">

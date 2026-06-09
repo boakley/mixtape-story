@@ -412,9 +412,8 @@
       {#if mode === 'list'}
         <form method="POST" action="?/parse_list" use:enhance class="space-y-3">
           <span class="inline-flex items-center gap-1.5">
-            <label class="block text-sm text-ink-muted" for="list-input">
-              Paste a list of songs. One song per line, or one per quoted title.
-              Each line is matched against the Apple Music catalog.
+            <label class="text-xs uppercase tracking-wider text-ink-muted" for="list-input">
+              Paste a list
             </label>
             <HelpTip label="Paste a list">
               Paste from a playlist, an email, or just type. We match each
@@ -422,9 +421,14 @@
               songs are added.
             </HelpTip>
           </span>
+          <p id="list-help" class="text-sm text-ink-muted">
+            One song per line, or one per quoted title. Each line is matched
+            against the Apple Music catalog.
+          </p>
           <textarea
             id="list-input"
             name="text"
+            aria-describedby="list-help"
             rows="6"
             placeholder={'"Angel from Montgomery" John Prine\n"Wing" Patti Smith\n"When the Levee Breaks" Led Zeppelin'}
             class="w-full rounded-md border border-rule px-3 py-2 text-sm leading-relaxed"
@@ -440,16 +444,20 @@
         <!-- Search picker -->
         <div class="space-y-3">
           <span class="inline-flex items-center gap-1.5">
-            <label class="block text-sm text-ink-muted" for="search-input">
-              Type a song title and artist. Pick the right match from the list.
+            <label class="text-xs uppercase tracking-wider text-ink-muted" for="search-input">
+              Search
             </label>
             <HelpTip label="Search">
               Searches the Apple Music catalog as you type. If nothing
               matches, the URL paste and Add manually options appear below.
             </HelpTip>
           </span>
+          <p id="search-help" class="text-sm text-ink-muted">
+            Type a song title and artist. Pick the right match from the list.
+          </p>
           <input
             id="search-input"
+            aria-describedby="search-help"
             type="search"
             bind:value={searchQuery}
             placeholder="fleetwood mac rhiannon"
@@ -548,17 +556,21 @@
               class="space-y-2 rounded-md border border-rule p-3"
             >
               <span class="inline-flex items-center gap-1.5">
-                <label class="block text-xs text-ink-muted" for="url-input">
-                  Paste a Spotify, YouTube Music, or other streaming URL.
+                <label class="text-xs uppercase tracking-wider text-ink-muted" for="url-input">
+                  Streaming URL
                 </label>
                 <HelpTip label="Streaming URL">
                   Songlink/Odesli resolves any service URL into a universal
                   link that opens in the listener's preferred app.
                 </HelpTip>
               </span>
+              <p id="url-help" class="text-xs text-ink-muted">
+                Paste a Spotify, YouTube Music, or other streaming URL.
+              </p>
               <div class="flex items-center gap-2">
                 <input
                   id="url-input"
+                  aria-describedby="url-help"
                   type="url"
                   name="url"
                   placeholder="https://..."
@@ -637,10 +649,10 @@
     {/if}
 
     {#if form && 'error' in form && form.error}
-      <p class="mt-3 text-sm text-accent">{form.error}</p>
+      <p role="alert" class="mt-3 text-sm text-accent">{form.error}</p>
     {/if}
     {#if form && 'imported' in form && form.imported}
-      <p class="mt-3 text-sm text-ink-muted">Imported {form.imported} songs.</p>
+      <p role="status" class="mt-3 text-sm text-ink-muted">Imported {form.imported} songs.</p>
     {/if}
   </section>
 

@@ -1,7 +1,11 @@
 <script lang="ts">
   type Cta = { label: string; href: string };
-  type Props = { cta: Cta };
-  let { cta }: Props = $props();
+  type Props = {
+    cta: Cta;
+    /** Optional "see an example" link below the CTA. Omit to hide. */
+    example?: Cta;
+  };
+  let { cta, example }: Props = $props();
 </script>
 
 <main class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-5 py-12 sm:px-6 sm:py-16">
@@ -37,12 +41,14 @@
     </a>
   </p>
 
-  <p class="mt-4 text-sm">
-    <a
-      href="/bryan"
-      class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
-    >See Bryan's mixtape →</a>
-  </p>
+  {#if example}
+    <p class="mt-4 text-sm">
+      <a
+        href={example.href}
+        class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+      >{example.label}</a>
+    </p>
+  {/if}
 
   <p class="mt-12 text-xs italic text-ink-muted">In private testing.</p>
 </main>

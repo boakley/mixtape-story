@@ -32,4 +32,4 @@
   <meta name="twitter:description" content="Share the songs, share the stories." />
 </svelte:head>
 
-<LandingHero {cta} />
+<LandingHero {cta} example={{ label: 'See Bryan’s mixtape →', href: '/bryan' }} />

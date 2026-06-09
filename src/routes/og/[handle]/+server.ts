@@ -83,11 +83,22 @@ export const GET: RequestHandler = async ({ params, locals: { supabase }, setHea
 
   if (!profile) throw error(404, 'Mixtape not found');
 
-  const { data: songs } = await supabase
-    .from('songs')
-    .select('artist, position')
-    .eq('owner_id', profile.id)
-    .order('position');
+  // Scope songs to the personal mixtape, matching the reader page —
+  // defense in depth now that group shares exist. No mixtape (very old
+  // profile not yet backfilled) renders the empty-state card.
+  const { data: personalMixtape } = await supabase
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profile.id)
+    .maybeSingle<{ id: string }>();
+
+  const { data: songs } = personalMixtape
+    ? await supabase
+        .from('songs')
+        .select('artist, position')
+        .eq('mixtape_id', personalMixtape.id)
+        .order('position')
+    : { data: [] };
 
   // Dedupe artists in mixtape order, case-insensitive, skipping empties.
   const seen = new Set<string>();

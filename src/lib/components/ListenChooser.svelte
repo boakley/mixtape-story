@@ -54,7 +54,7 @@
     Where do you listen?
   </h2>
   <p id="listen-chooser-desc" class="mt-2 text-sm leading-snug text-ink-muted">
-    Pick a service and we'll open songs there directly — straight to the track.
+    Pick a service and we'll open songs there directly — straight to the song.
     Skip it and you'll land on a chooser page instead.
   </p>
 
