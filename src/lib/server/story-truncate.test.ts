@@ -54,69 +54,66 @@ describe('truncateStory', () => {
 });
 
 describe('normalizeSongKey', () => {
-  it('keys by ISRC (uppercased) when present', () => {
-    expect(normalizeSongKey('Title', 'Artist', 'usrc12345678')).toBe('isrc:USRC12345678');
-  });
-
-  it('falls back to normalized title + artist when ISRC is null', () => {
-    expect(normalizeSongKey('Imagine', 'John Lennon', null)).toBe('tn:imagine|john lennon');
+  it('keys by normalized title + artist', () => {
+    expect(normalizeSongKey('Imagine', 'John Lennon')).toBe('tn:imagine|john lennon');
   });
 
   it('lowercases for fallback key', () => {
-    const a = normalizeSongKey('IMAGINE', 'John Lennon', null);
-    const b = normalizeSongKey('imagine', 'john lennon', null);
+    const a = normalizeSongKey('IMAGINE', 'John Lennon');
+    const b = normalizeSongKey('imagine', 'john lennon');
     expect(a).toBe(b);
   });
 
   it('strips parenthetical qualifiers', () => {
-    const plain = normalizeSongKey('Imagine', 'John Lennon', null);
-    const remix = normalizeSongKey('Imagine (Remix)', 'John Lennon', null);
-    const live = normalizeSongKey('Imagine (Live at Madison Square Garden)', 'John Lennon', null);
+    const plain = normalizeSongKey('Imagine', 'John Lennon');
+    const remix = normalizeSongKey('Imagine (Remix)', 'John Lennon');
+    const live = normalizeSongKey('Imagine (Live at Madison Square Garden)', 'John Lennon');
     expect(remix).toBe(plain);
     expect(live).toBe(plain);
   });
 
   it('strips trailing "feat. X" suffix', () => {
-    const plain = normalizeSongKey('Imagine', 'John Lennon', null);
-    const feat = normalizeSongKey('Imagine feat. Yoko Ono', 'John Lennon', null);
-    const featuring = normalizeSongKey('Imagine featuring Yoko Ono', 'John Lennon', null);
+    const plain = normalizeSongKey('Imagine', 'John Lennon');
+    const feat = normalizeSongKey('Imagine feat. Yoko Ono', 'John Lennon');
+    const featuring = normalizeSongKey('Imagine featuring Yoko Ono', 'John Lennon');
     expect(feat).toBe(plain);
     expect(featuring).toBe(plain);
   });
 
   it('strips "- feat. X" hyphenated form', () => {
-    const plain = normalizeSongKey('Imagine', 'John Lennon', null);
-    const dashed = normalizeSongKey('Imagine - feat. Yoko Ono', 'John Lennon', null);
+    const plain = normalizeSongKey('Imagine', 'John Lennon');
+    const dashed = normalizeSongKey('Imagine - feat. Yoko Ono', 'John Lennon');
     expect(dashed).toBe(plain);
   });
 
   it('collapses internal whitespace', () => {
-    const a = normalizeSongKey('Imagine', 'John Lennon', null);
-    const b = normalizeSongKey('  Imagine  ', '  John   Lennon  ', null);
+    const a = normalizeSongKey('Imagine', 'John Lennon');
+    const b = normalizeSongKey('  Imagine  ', '  John   Lennon  ');
     expect(a).toBe(b);
   });
 
   it('treats null artist as empty', () => {
-    expect(normalizeSongKey('Imagine', null, null)).toBe('tn:imagine|');
+    expect(normalizeSongKey('Imagine', null)).toBe('tn:imagine|');
   });
 
   it('keeps genuinely different titles distinct', () => {
-    const a = normalizeSongKey('Imagine', 'John Lennon', null);
-    const b = normalizeSongKey('Mother', 'John Lennon', null);
+    const a = normalizeSongKey('Imagine', 'John Lennon');
+    const b = normalizeSongKey('Mother', 'John Lennon');
     expect(a).not.toBe(b);
   });
 
   it('keeps same title with different artists distinct', () => {
-    const a = normalizeSongKey('Imagine', 'John Lennon', null);
-    const b = normalizeSongKey('Imagine', 'Glee Cast', null);
+    const a = normalizeSongKey('Imagine', 'John Lennon');
+    const b = normalizeSongKey('Imagine', 'Glee Cast');
     expect(a).not.toBe(b);
   });
 
-  it('ISRC takes precedence over normalized fallback', () => {
-    // Even with title/artist that would normalize to the same key,
-    // ISRC differs → keys differ.
-    const a = normalizeSongKey('Imagine', 'John Lennon', 'USRC11111111');
-    const b = normalizeSongKey('Imagine', 'John Lennon', 'USRC22222222');
-    expect(a).not.toBe(b);
+  it('is indifferent to recording identity — the key asks about the song, not the release', () => {
+    // ISRC was deliberately dropped from the key: different releases of
+    // one song carry different ISRCs, and rows without an ISRC could
+    // never match rows with one. See the module comment.
+    const a = normalizeSongKey('Imagine', 'John Lennon');
+    const b = normalizeSongKey('Imagine', 'John Lennon');
+    expect(a).toBe(b);
   });
 });

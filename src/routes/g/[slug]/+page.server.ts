@@ -211,7 +211,7 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
           addedAt: song.added_at
         };
 
-        const key = normalizeSongKey(song.title, song.artist, song.isrc);
+        const key = normalizeSongKey(song.title, song.artist);
         const existing = byKey.get(key);
         if (existing) {
           existing.contributors.push(contributor);

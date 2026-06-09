@@ -7,11 +7,17 @@
 //   whitespace or end-of-string.
 //
 // - normalizeSongKey: dedup key for aggregating "the same song" across
-//   members' mixtapes. Prefer ISRC when present; otherwise fall back to
-//   normalized title + artist (lowercase, parentheticals stripped, "feat."
-//   tail stripped, whitespace collapsed). Title alone is too lossy (every
-//   "Africa" would merge); title+artist with the basic normalization is
-//   right for v1 at writing-group scale.
+//   members' mixtapes: normalized title + artist (lowercase,
+//   parentheticals stripped, "feat." tail stripped, whitespace
+//   collapsed). Title alone is too lossy (every "Africa" would merge).
+//
+//   Deliberately NOT keyed on ISRC. An ISRC identifies a recording, but
+//   this feature asks the human question "did two people pick the same
+//   song?" — different releases of one song carry different ISRCs, and
+//   an ISRC-when-present key can never match a song row that lacks one
+//   (all pre-Apple-Music-API rows do). Audited against prod 2026-06-09:
+//   title+artist found every real overlap; ISRC-first added only the
+//   asymmetry.
 
 export type TruncatedStory = {
   excerpt: string;
@@ -46,12 +52,7 @@ export function truncateStory(text: string): TruncatedStory {
   };
 }
 
-export function normalizeSongKey(
-  title: string,
-  artist: string | null,
-  isrc: string | null
-): string {
-  if (isrc) return `isrc:${isrc.toUpperCase()}`;
+export function normalizeSongKey(title: string, artist: string | null): string {
   return `tn:${normalizeForKey(title)}|${normalizeForKey(artist)}`;
 }
 
