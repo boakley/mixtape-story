@@ -43,8 +43,14 @@ A deliberately short list, each one a journey that only has meaning end to end:
 - **Create a group**: a steward visits `/g/create`, fills the form, lands on the new group's landing page with the steward panel visible
 - **Invite and join**: a steward mints an invite code; a brand-new visitor follows the URL, signs up via magic link, lands inside the group as a member — exercising the full magic-link-carrying-intent flow across two browser contexts
 - **Share a mixtape with a group**: a member with a populated mixtape clicks "Share my mixtape with this group"; their card appears in the directory; clicking "Stop sharing" removes it
+- **Group tabs**: the three tabs on a group landing render, persist across reloads, and respect the shared Expanded/Compact view + story truncation
+- **Steward inline edit**: a steward edits the group name and description in place, collapses the steward section, uses a HelpTip
+- **First-visit hint**: a first-time visitor sees the auto-open + expand-gesture hint once; interaction dismisses it; reload keeps it dismissed
+- **First Listen**: the first Listen tap pops the service chooser; the choice persists and deep-links thereafter; "Other" persists explicitly without re-prompting
+- **Masthead edit**: the owner edits mixtape title and description; a visitor sees the new values; an anonymous POST to the edit actions is rejected (owner-gate)
+- **Form HelpTips**: every primary form field across login, group create, and the editor exposes its (?) help affordance
 
-That short list, named in sentence-shaped titles, is itself a spec a product owner can scan.
+That list, named in sentence-shaped titles, is itself a spec a product owner can scan.
 
 ## Page objects: the product's vocabulary as an API
 
@@ -120,7 +126,7 @@ through. If we ever see that happen, layer in a strict allowlist.
 - **Typo hygiene.** `grep -rE "@(role|feature):" testing/e2e/tests | sort -u` gives the full inventory in one line. Catches `@features:group` that flat tags would silently absorb.
 - **Future-proof.** Adding a third dimension later (`@priority:critical`, `@surface:mobile`) doesn't require renaming what's there.
 
-A two-dimension scheme is cheap to set up at 9 specs and meaningful refactor pain to add at 50. It's a small investment with the largest payoff when the suite grows or the reporting layer arrives — both of which are realistic, not hypothetical.
+A two-dimension scheme is cheap to set up at 14 specs and meaningful refactor pain to add at 50. It's a small investment with the largest payoff when the suite grows or the reporting layer arrives — both of which are realistic, not hypothetical.
 
 ### What we deliberately don't tag
 
@@ -141,6 +147,14 @@ A two-dimension scheme is cheap to set up at 9 specs and meaningful refactor pai
 | 09-share-mixtape-with-group | `@feature:group` `@role:member` |
 | 10-group-tabs | `@feature:group` `@role:steward` |
 | 11-steward-inline-edit | `@feature:group` `@role:steward` |
+| 12-first-visit-hint | `@feature:public` `@role:viewer` |
+| 13-first-listen | `@feature:public` `@role:viewer` |
+| 14-mixtape-masthead-edit | `@feature:public` `@role:creator` `@role:viewer` |
+| 15-form-helptips | `@feature:auth` `@feature:editor` `@feature:group` `@role:creator` `@role:viewer` |
+
+(15-form-helptips briefly carried `@feature:edit` — the predicted semantic
+drift the format-only check can't catch. Fixed 2026-06-09; if it recurs,
+layer in the strict allowlist.)
 
 ## Authentication
 
@@ -170,7 +184,7 @@ When CI eventually lands, both layers run on every push and the Playwright HTML 
 
 ## Reporting
 
-By default two reporters run: `list` for console output, and Playwright's `html` report, published in CI as a build artifact.
+Locally a single `list` reporter runs; under CI the config adds Playwright's `html` report (to be published as a build artifact once CI lands).
 
 ReportPortal streaming is optional and off by default. It is a Playwright reporter rather than a fixture, so the on/off decision lives in `playwright.config.ts`. That file is plain TypeScript and reads the environment when it loads, so the ReportPortal reporter (`@reportportal/agent-js-playwright`) is appended to the list only when `RP_ENABLE` is set along with `RP_ENDPOINT` and `RP_API_KEY`. A developer who doesn't run ReportPortal leaves those unset; the reporter is never loaded and the run is unaffected. If `RP_ENABLE` is set but the connection variables are missing, the config logs a warning and continues without ReportPortal instead of failing the run.
 
@@ -207,12 +221,8 @@ testing/
       01-sign-in.spec.ts          # the real magic-link path, once
       02-create-mixtape.spec.ts
       03-write-stories.spec.ts
-      04-publish-and-share.spec.ts
-      05-viewer-opens-mixtape.spec.ts
-      06-ask-about-a-song.spec.ts
-      07-create-group.spec.ts
-      08-invite-and-join.spec.ts
-      09-share-mixtape-with-group.spec.ts
+      ...                         # one numbered spec per journey
+      NN-latest-journey.spec.ts   # see the tag map above for the full list
     pages/                        # page objects in the product's vocabulary
       mixtape.ts
       group.ts
@@ -221,6 +231,7 @@ testing/
       mailpit.ts                  # local mail catcher helper for 01
       env.ts                      # reads .env.local for local Supabase
       test.ts                     # custom Playwright test with creator/visitor fixtures
+      global-setup.ts             # pre-compiles routes so test 1 hits a warm dev server
     results/                      # gitignored — Playwright HTML report, traces, videos
 src/
   …
@@ -229,18 +240,17 @@ src/
 
 Unit tests live next to the module they exercise (Vitest convention) — refactoring a module finds its test in the same folder. End-to-end tests live under `testing/e2e/tests/` because they don't have a module owner; they're whole-product journeys. Each subdir under `testing/e2e/` has one purpose: `tests/` are the specs, `pages/` are the domain interface, `fixtures/` are shared setup, `results/` is gitignored artifacts. `rm -rf testing/e2e/results/` is always safe.
 
-The numbered E2E files are intentional: read in order, they are the v1 journey, from first sign-in to sharing a mixtape with a group. The directory is the story.
+The numbered E2E files are intentional: read in order, they are the v1 journey, from first sign-in through groups to the polish layer (hints, the Listen chooser, HelpTips). The directory is the story. One number is a hole: 06 was reserved for ask-about-a-song, whose `wa.me` deep-link surface never shipped; the gap stays so the other numbers keep their meaning.
 
-## Current state (2026-06-06)
+## Current state (2026-06-09)
 
-Honest snapshot of what's wired today vs. what's scaffolded:
+Honest snapshot of what's wired today vs. what's still pending:
 
 - **Framework, fixtures, page objects, scripts**: fully wired.
-- **01-sign-in**: passes against the live local stack. Exercises the real magic-link flow.
-- **20 unit tests across 3 files**: reserved-slug denylist, `listenHref` routing, `safeRedirect` open-redirect hardening. Pass in <200ms.
-- **02-09 specs**: scaffolded with the journey in the test body, marked `test.skip()` pending a real-DOM audit of selectors and corresponding `aria-label` / `data-testid` additions in the product UI. Removing the `.skip` is the activation step once selectors are verified.
-- **06-ask-about-a-song**: not yet written (the `wa.me` deep-link surface it would test isn't built in the product yet).
+- **14 spec files (01–15, no 06), all active**: 21 journeys × two device projects = 42 test executions per run, green in ~15s against the local stack. No `test.skip()` scaffolds remain.
+- **69 unit tests across 7 files**: reserved-handle and reserved-slug denylists, `listenHref` routing, `safeRedirect` hardening, feature-flag parsing, story truncation, and the tag-format check. Pass in well under a second.
+- **06-ask-about-a-song**: still not written (the `wa.me` deep-link surface it would test isn't built in the product); its number stays reserved.
 - **CI**: not yet configured. The local commands above work; a workflow file lands when prod has CI infrastructure.
 - **ReportPortal**: not yet wired. The integration sketched in *Reporting* above is the target, not the current state.
 
-Two complementary ways to grow the suite from here: (1) add a journey when a new feature lands, in the same numbered, sentence-shaped style, and (2) move selectors from "guessed at write-time" to "verified against rendered HTML" by giving the product the right ARIA labels and (where genuinely needed) `data-testid` hooks. The second is the cheaper compounding investment; the first is the load-bearing one.
+Two complementary ways to grow the suite from here: (1) add a journey when a new feature lands, in the same numbered, sentence-shaped style, and (2) keep selectors on the accessibility surface (`getByRole` / `getByLabel` + visible text) so refactors don't shake the suite — that bet has paid off through several component extractions already.

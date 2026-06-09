@@ -50,7 +50,7 @@ test(
 
 test(
   '/{handle}/edit: list/search/URL fall-throughs all have HelpTips',
-  { tag: ['@feature:edit', '@role:creator'] },
+  { tag: ['@feature:editor', '@role:creator'] },
   async ({ creator }) => {
     await creator.mixtape.openEditor();
     await awaitHydrated(creator.page);
@@ -82,7 +82,7 @@ test(
 
 test(
   '/{handle}/edit story editor: Memory year + Story have HelpTips',
-  { tag: ['@feature:edit', '@role:creator'] },
+  { tag: ['@feature:editor', '@role:creator'] },
   async ({ creator }) => {
     // Need a song first so the per-row Story button exists.
     await creator.mixtape.addSongsByList(['Such Great Heights - The Postal Service']);
