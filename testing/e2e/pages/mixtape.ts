@@ -1,5 +1,6 @@
 import type { Page, Locator } from '@playwright/test';
 import { awaitHydrated } from '../helpers/hydration';
+import { actAndExpectSuccess } from '../helpers/actions';
 
 // Domain-shaped interface to a creator's mixtape. Methods read as
 // what a person does: addSong, writeStory, share. No DOM verbs in the
@@ -59,13 +60,7 @@ export class Mixtape {
     // re-runs `load` in place (no hard nav) so `awaitHydrated` returns
     // instantly off the still-mounted layout — callers would race
     // ahead before the INSERT committed.
-    await Promise.all([
-      this.page.waitForResponse(
-        (r) => r.url().includes('import_playlist') && r.request().method() === 'POST',
-        { timeout: 15_000 }
-      ),
-      importBtn.click()
-    ]);
+    await actAndExpectSuccess(this.page, 'import_playlist', () => importBtn.click());
   }
 
   /**
@@ -86,13 +81,9 @@ export class Mixtape {
     if (memoryYear !== undefined) {
       await row.locator('input[name="memory_year"]').fill(String(memoryYear));
     }
-    await Promise.all([
-      this.page.waitForResponse(
-        (r) => r.url().includes('save_story') && r.request().method() === 'POST',
-        { timeout: 15_000 }
-      ),
+    await actAndExpectSuccess(this.page, 'save_story', () =>
       row.getByRole('button', { name: /save story/i }).click()
-    ]);
+    );
   }
 
   /** Click "Share" on the public page — triggers navigator.share or wa.me fallback. */

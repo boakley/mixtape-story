@@ -1,5 +1,6 @@
 import { expect, type Page, type Locator } from '@playwright/test';
 import { awaitHydrated } from '../helpers/hydration';
+import { actAndExpectSuccess } from '../helpers/actions';
 
 // Domain-shaped interface to a group landing page.
 // Methods read as what a steward or member does: mintInvite,
@@ -37,26 +38,18 @@ export class Group {
     // would return instantly off the still-mounted layout. Wait on
     // the action's response instead, which fires only when the
     // server-side INSERT has committed.
-    await Promise.all([
-      this.page.waitForResponse(
-        (r) => r.url().includes('shareWith') && r.request().method() === 'POST',
-        { timeout: 15_000 }
-      ),
+    await actAndExpectSuccess(this.page, 'shareWith', () =>
       this.page.getByRole('button', { name: /share my mixtape with this group/i }).click()
-    ]);
+    );
   }
 
   /** Reverse of shareMyMixtape — hides the viewer's card from the directory. */
   async unshareMyMixtape(): Promise<void> {
-    await Promise.all([
-      this.page.waitForResponse(
-        (r) => r.url().includes('unshareFrom') && r.request().method() === 'POST',
-        { timeout: 15_000 }
-      ),
+    await actAndExpectSuccess(this.page, 'unshareFrom', () =>
       this.page
         .getByRole('button', { name: /stop sharing my mixtape with this group/i })
         .click()
-    ]);
+    );
   }
 
   /**
@@ -225,17 +218,11 @@ export async function createGroup(
 
   // Wait for the form-action response so the test fails fast and
   // informatively if the action errors instead of timing out on
-  // waitForURL.
-  const [response] = await Promise.all([
-    page.waitForResponse(
-      (r) => r.url().includes('/g/create') && r.request().method() === 'POST',
-      { timeout: 15_000 }
-    ),
+  // waitForURL. Checks the ActionResult body, not just the HTTP
+  // status — enhance answers HTTP 200 even for fail(...) results.
+  await actAndExpectSuccess(page, '/g/create', () =>
     page.getByRole('button', { name: /create group/i }).click()
-  ]);
-  if (!response.ok() && response.status() !== 303) {
-    throw new Error(`createGroup form action failed: ${response.status()}`);
-  }
+  );
   await page.waitForURL(`**/g/${opts.slug}`);
   return new Group(page, opts.slug);
 }
