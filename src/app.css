@@ -50,4 +50,15 @@ html {
     padding-left: 0.75em;
     color: var(--color-ink-muted);
   }
+  /* In-story links: the site-wide link voice (accent underline,
+     accent on hover) — without this they render as plain text. */
+  & a {
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  & a:hover {
+    color: var(--color-accent);
+  }
 }
