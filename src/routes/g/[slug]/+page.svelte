@@ -65,27 +65,30 @@
     expandedSongsInCompact = next;
   }
 
-  // Teaser line for a song row on Songs-we-share / All-songs tabs.
-  // Natural-language list of the contributors who actually wrote a
-  // story (contributors who just picked the song don't promise text).
-  // Caps at 2 names + "and N others" so even a popular song reads
-  // cleanly in one truncated line.
-  function buildStoryTeaser(names: string[]): string {
+  // Teaser line for a song row on Songs-we-share / All-songs tabs:
+  // who picked this song, in mixtape-add order. Names every picker
+  // (not just story-writers — "Picked by Anni and Bryan, story by
+  // Bryan" confusion led here; the chevron already signals readable
+  // text). "Picked", not "Shared": share already means the Share
+  // button and sharing a mixtape into a group. Caps at 2 names +
+  // "and N others" so even a popular song reads cleanly in one
+  // truncated line.
+  function buildPickedTeaser(names: string[]): string {
     if (names.length === 0) return '';
-    if (names.length === 1) return `Story by ${names[0]}`;
+    if (names.length === 1) return `Picked by ${names[0]}`;
     if (names.length === 2) {
-      // Easter egg: when the two storytellers are Jack and Diane (in
+      // Easter egg: when the two pickers are Jack and Diane (in
       // either order), echo the John Mellencamp song title instead of
       // alphabetical order. The seed-group demo lands on this pairing
       // for "Taxi" and "Tea for One"; in real groups the chance of two
-      // storytellers being named Jack and Diane who'd mind the
-      // reference is vanishingly small.
+      // pickers being named Jack and Diane who'd mind the reference is
+      // vanishingly small.
       const lc = new Set(names.map((n) => n.toLowerCase()));
-      if (lc.has('jack') && lc.has('diane')) return 'Stories by Jack and Diane';
-      return `Stories by ${names[0]} and ${names[1]}`;
+      if (lc.has('jack') && lc.has('diane')) return 'Picked by Jack and Diane';
+      return `Picked by ${names[0]} and ${names[1]}`;
     }
-    if (names.length === 3) return `Stories by ${names[0]}, ${names[1]}, and ${names[2]}`;
-    return `Stories by ${names[0]}, ${names[1]}, and ${names.length - 2} others`;
+    if (names.length === 3) return `Picked by ${names[0]}, ${names[1]}, and ${names[2]}`;
+    return `Picked by ${names[0]}, ${names[1]}, and ${names.length - 2} others`;
   }
 
   // "Songs we share" filter: songs picked by 2+ distinct contributors.
@@ -422,10 +425,13 @@
     {@const storyContributorNames = song.contributors
       .filter((c) => c.storyExcerptHtml.length > 0)
       .map((c) => c.displayName)}
+    <!-- Dedup picker names: the same member can pick a song twice
+         (songs are moments), but "Picked by Bryan and Bryan" isn't. -->
+    {@const pickerNames = [...new Set(song.contributors.map((c) => c.displayName))]}
     {@const hasStory = storyContributorNames.length > 0}
     {@const isExpanded = view.value === 'expanded' || expandedSongsInCompact.has(song.dedupKey)}
     {@const showStories = hasStory && isExpanded}
-    {@const showTeaser = hasStory && !isExpanded}
+    {@const showTeaser = !isExpanded}
     {@const storyId = `group-story-${song.dedupKey}`}
     <article
       data-testid="song-entry"
@@ -490,7 +496,7 @@
                        edge is bounded by where Listen sits. -->
                   {#if showTeaser}
                     <span class="mt-1 block truncate text-sm text-ink-muted">
-                      {buildStoryTeaser(storyContributorNames)}
+                      {buildPickedTeaser(pickerNames)}
                     </span>
                   {/if}
                 </span>
@@ -523,6 +529,11 @@
                   </span>
                   {#if song.artist}
                     <span class="block truncate text-sm text-ink-muted sm:hidden">{song.artist}</span>
+                  {/if}
+                  {#if showTeaser}
+                    <span class="mt-1 block truncate text-sm text-ink-muted">
+                      {buildPickedTeaser(pickerNames)}
+                    </span>
                   {/if}
                 </span>
               </div>
