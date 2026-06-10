@@ -33,7 +33,9 @@
     if (data.sort !== 'edited') params.set('sort', data.sort);
     if (data.dir !== 'desc') params.set('dir', data.dir);
     const qs = params.toString();
-    return qs ? '?' + qs : './';
+    // Bare '?' = current path, query cleared. NOT './' — relative to a
+    // no-trailing-slash path that resolves to the parent (/admin → 404).
+    return '?' + qs;
   }
 
   function indicator(key: SortKey): string {
