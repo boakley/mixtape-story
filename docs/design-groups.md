@@ -1,3 +1,13 @@
+> **Superseded (v1.5, 2026-06-11).** The per-scope-copy model described
+> below shipped, was refactored to share semantics (migration 0016), and
+> then v1.5 added group-born secondary mixtapes at `/{handle}/{group-slug}`
+> (not the `/u/{handle}/{slug}` shape sketched here). Current model: one
+> primary mixtape at `/{handle}`, shareable into any number of groups;
+> secondary mixtapes are created from a group's page, slugged after the
+> group, blank or deep-copied, fully independent afterward; a group shows
+> at most one mixtape per member. System paths under `/{handle}/` are
+> `_`-prefixed (`/_edit`), which the slug grammar can never produce.
+
 # Groups — design exploration
 
 A design doc for adding **groups** to mixtapestory.com, behind a feature flag, earlier than `CLAUDE.md` previously thought. This document surveys the choices and lands on a lean for each. Nothing here is committed yet — the goal is a concrete-enough sketch that we can decide whether and when to build it.

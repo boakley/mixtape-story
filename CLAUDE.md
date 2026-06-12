@@ -82,7 +82,7 @@ type Media = {
 
 **Why these specific shapes — three foundation decisions worth understanding:**
 
-1. **`Mixtape` is its own entity, not embedded in `User`.** A user has zero or more mixtapes. v1 enforces ≤1 in app logic, *not* in the schema. Future audiences (multiple mixtapes per user, organizations owning mixtapes) need no migration.
+1. **`Mixtape` is its own entity, not embedded in `User`.** A user has one *primary* mixtape (slug null, unique per profile — schema-enforced since migration 0019) plus any number of *group-born* mixtapes at `/{handle}/{slug}` (slug = the group's slug; created only from a group's page, blank or deep-copied, fully independent afterward). A group shows at most one mixtape per member (unique `(profile_id, group_id)` share). The 1:1 mixtape↔group pairing is a flow rule, not a schema rule — free-form side mixtapes later are a UI change.
 
 2. **`Story.author_id` is separate from `Mixtape.creator_id`.** v1 enforces they match in app logic. Future audiences (many fans co-authoring a mixtape about an artist; family co-authoring a memorial mixtape) work without migration.
 
@@ -131,6 +131,8 @@ If a v1 design choice would *prevent* one of these futures, flag it and discuss.
 - Brand: `mixtape`, `story`, `stories`
 
 Centralize this list in `src/lib/handles/reserved.ts`. Validate on signup.
+
+Under `/{handle}/`, system paths are **`_`-prefixed** (`/_edit`; future `/_qr`, …) — the mixtape-slug grammar can't produce a leading underscore, so user space and system space can't collide by construction (`src/lib/mixtapes/slug.ts`). The one denylisted slug is `edit`, reserved by the legacy `/edit` redirect shim.
 
 ## Conventions
 

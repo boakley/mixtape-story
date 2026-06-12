@@ -308,11 +308,12 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
   };
 };
 
-// Share semantics: a user has one mixtape entity, which can be visible
-// in N groups via the mixtape_group_shares join table. Edits to the
-// mixtape propagate to every group it's shared with because there's
-// only one row. To make a divergent version for a specific audience,
-// the user creates a different mixtape entity (v1.5+).
+// Share semantics: every mixtape can be visible in N groups via the
+// mixtape_group_shares join table, but a member shows each group at
+// most one mixtape (unique (profile_id, group_id) since 0019) — their
+// primary or their group-born version, created at /g/{slug}/new-mixtape.
+// Edits propagate everywhere a mixtape is shared; divergent versions
+// are separate mixtape entities.
 export const actions: Actions = {
   // Share the user's mixtape with this group. Idempotent — the PK on
   // (mixtape_id, group_id) makes duplicate inserts a no-op.

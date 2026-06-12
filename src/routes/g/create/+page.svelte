@@ -16,7 +16,7 @@
   <BrandCap />
   <h1 class="mt-2 text-3xl leading-tight text-ink">Start a group</h1>
   <p class="mt-2 text-sm text-ink-muted">
-    Signed in as <a href="/u/{data.handle}" class="text-ink hover:text-accent">{data.handle}</a>. Members will join with an invite code you share.
+    Signed in as <a href="/{data.handle}" class="text-ink hover:text-accent">{data.handle}</a>. Members will join with an invite code you share.
   </p>
 
   <form method="POST" use:enhance class="mt-8 space-y-4">

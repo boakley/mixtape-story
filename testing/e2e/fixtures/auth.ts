@@ -119,7 +119,15 @@ export async function wipeTestData(): Promise<void> {
   if (lookupErr) throw new Error(`wipeTestData: profiles lookup failed: ${lookupErr.message}`);
 
   for (const p of leftovers ?? []) {
-    const { error: delErr } = await admin.auth.admin.deleteUser(p.id as string);
+    let { error: delErr } = await admin.auth.admin.deleteUser(p.id as string);
+    if (delErr) {
+      // Under stress-run parallelism GoTrue's user lookup can fail
+      // transiently ("Database error loading user" — pool contention,
+      // not a missing user). One retry after a beat; a second failure
+      // is real and should throw.
+      await new Promise((r) => setTimeout(r, 500));
+      ({ error: delErr } = await admin.auth.admin.deleteUser(p.id as string));
+    }
     if (delErr) throw new Error(`wipeTestData: deleteUser(${p.id}) failed: ${delErr.message}`);
   }
 }

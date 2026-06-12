@@ -50,6 +50,8 @@ A deliberately short list, each one a journey that only has meaning end to end:
 - **Masthead edit**: the owner edits mixtape title and description; a visitor sees the new values; an anonymous POST to the edit actions is rejected (owner-gate)
 - **Form HelpTips**: every primary form field across login, group create, and the editor exposes its (?) help affordance
 - **Story prose styling**: a richly formatted story (paragraphs, list, quote, link) renders *styled* on the public page — computed-style assertions that bind markdown output to the `prose-story` CSS, after that class shipped as a phantom (referenced, never defined) for three phases
+- **A mixtape just for a group**: from a group's page, a member creates a group-born mixtape (blank, or deep-copied from an existing one) that diverges freely — edits in either direction never leak
+- **Each group sees one mixtape**: a member shares the primary with one group and a group-born version with another; cards name and link the right mixtape; the per-group cap and the reshare chooser hold; two members' overlapping picks meet in Songs we share
 
 That list, named in sentence-shaped titles, is itself a spec a product owner can scan.
 
@@ -153,6 +155,8 @@ A two-dimension scheme is cheap to set up at 14 specs and meaningful refactor pa
 | 14-mixtape-masthead-edit | `@feature:public` `@role:creator` `@role:viewer` |
 | 15-form-helptips | `@feature:auth` `@feature:editor` `@feature:group` `@role:creator` `@role:viewer` |
 | 16-story-prose-styling | `@feature:editor` `@feature:public` `@role:creator` |
+| 17-group-mixtape | `@feature:group` `@feature:editor` `@role:creator` |
+| 18-share-mixtapes-with-groups | `@feature:group` `@role:member` `@role:creator` |
 
 (15-form-helptips briefly carried `@feature:edit` — the predicted semantic
 drift the format-only check can't catch. Fixed 2026-06-09; if it recurs,
@@ -249,8 +253,8 @@ The numbered E2E files are intentional: read in order, they are the v1 journey, 
 Honest snapshot of what's wired today vs. what's still pending:
 
 - **Framework, fixtures, page objects, scripts**: fully wired.
-- **15 spec files (01–16, no 06), all active**: 22 journeys × two device projects = 44 test executions per run, green in ~15s against the local stack. No `test.skip()` scaffolds remain.
-- **53 unit tests across 7 files**: reserved-handle and reserved-slug denylists, `listenHref` routing, `safeRedirect` hardening, story truncation, markdown rendering (tags + sanitization), and the tag-format check. Pass in well under a second. (Was 69/7 — the feature-flag parser and its tests retired with the `FEATURES_GROUPS` flag when groups went permanently live.)
+- **17 spec files (01–18, no 06), all active**: 27 journeys × two device projects = 54 test executions per run, green in ~20s against the local stack. No `test.skip()` scaffolds remain.
+- **64 unit tests across 9 files**: reserved-handle and reserved-slug denylists, mixtape-slug grammar, `listenHref` routing, `safeRedirect` hardening, story truncation, markdown rendering (tags + sanitization), mixtape-copy builders, and the tag-format check. Pass in well under a second. (Was 69/7 — the feature-flag parser and its tests retired with the `FEATURES_GROUPS` flag when groups went permanently live.)
 - **06-ask-about-a-song**: still not written (the `wa.me` deep-link surface it would test isn't built in the product); its number stays reserved.
 - **CI**: not yet configured. The local commands above work; a workflow file lands when prod has CI infrastructure.
 - **ReportPortal**: not yet wired. The integration sketched in *Reporting* above is the target, not the current state.

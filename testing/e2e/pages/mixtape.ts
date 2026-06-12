@@ -38,13 +38,10 @@ export class Mixtape {
     await this.page.goto(this.path);
   }
 
-  /**
-   * Open the editor. The primary still enters via the legacy /edit
-   * URL (redirect shim) until Phase G flips it; group-born mixtapes
-   * have only ever had /_edit.
-   */
+  /** Open the editor at {path}/_edit. (The legacy /edit redirect shim
+   *  still exists for humans' bookmarks; tests go direct.) */
   async openEditor(): Promise<void> {
-    await this.page.goto(this.slug ? `${this.path}/_edit` : `/${this.handle}/edit`);
+    await this.page.goto(`${this.path}/_edit`);
   }
 
   /** Title heading: the mixtape's name, or the primary's default. */

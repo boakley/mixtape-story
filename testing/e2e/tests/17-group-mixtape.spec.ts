@@ -60,6 +60,10 @@ test(
       'Family Cuts'
     );
 
+    // The legacy /edit URL still lands in the editor (redirect shim).
+    await creator.page.goto(`/${creator.handle}/edit`);
+    await creator.page.waitForURL(`**/${creator.handle}/_edit`);
+
     // The primary is untouched by any of this.
     await creator.mixtape.open();
     await expect(creator.mixtape.title()).toBeVisible();
