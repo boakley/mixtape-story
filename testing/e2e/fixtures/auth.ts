@@ -134,6 +134,66 @@ export function workerGroupSlug(base: string): string {
 }
 
 /**
+ * Seed a song directly into a profile's primary mixtape — for
+ * multi-actor specs where walking the second actor through the
+ * editor UI would test nothing new (stub at the data layer when the
+ * flow isn't the thing under test).
+ */
+export async function seedSong(
+  profileId: string,
+  opts: { title: string; artist: string; position?: number }
+): Promise<void> {
+  const { data: mixtape, error: mxErr } = await admin
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (mxErr || !mixtape) throw new Error(`seedSong: no primary mixtape for ${profileId}`);
+
+  const { error } = await admin.from('songs').insert({
+    owner_id: profileId,
+    mixtape_id: mixtape.id,
+    position: opts.position ?? 1,
+    title: opts.title,
+    artist: opts.artist,
+    link_status: 'manual'
+  });
+  if (error) throw new Error(`seedSong(${opts.title}): ${error.message}`);
+}
+
+/**
+ * Make a profile a member of a group (by slug) and share their
+ * primary mixtape into it — the data-layer equivalent of the
+ * invite-join + share-button journey, for specs where that journey
+ * isn't the subject (it has its own coverage in 08/09).
+ */
+export async function seedGroupMember(groupSlug: string, profileId: string): Promise<void> {
+  const { data: group, error: gErr } = await admin
+    .from('groups')
+    .select('id')
+    .eq('slug', groupSlug)
+    .maybeSingle();
+  if (gErr || !group) throw new Error(`seedGroupMember: no group ${groupSlug}`);
+
+  const { error: memErr } = await admin
+    .from('group_memberships')
+    .insert({ group_id: group.id, profile_id: profileId, role: 'member' });
+  if (memErr) throw new Error(`seedGroupMember membership: ${memErr.message}`);
+
+  const { data: mixtape, error: mxErr } = await admin
+    .from('mixtapes')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (mxErr || !mixtape) throw new Error(`seedGroupMember: no primary mixtape for ${profileId}`);
+
+  const { error: shareErr } = await admin
+    .from('mixtape_group_shares')
+    .insert({ mixtape_id: mixtape.id, group_id: group.id });
+  if (shareErr) throw new Error(`seedGroupMember share: ${shareErr.message}`);
+}
+
+/**
  * For tests that need a real Listen <a> link to render (rather than
  * the disabled `→ Listen` span or the PreviewButton), mark every song
  * owned by a profile as resolved. Sets `link_status='done'` with a

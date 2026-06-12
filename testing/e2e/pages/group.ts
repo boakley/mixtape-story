@@ -33,13 +33,43 @@ export class Group {
    * members whose mixtape isn't already shared). Returns after the
    * action's reactive refresh.
    */
-  async shareMyMixtape(): Promise<void> {
+  async shareMyMixtape(mixtapeName?: string): Promise<void> {
+    // With several mixtapes, a labeled select appears above the
+    // button; pick by the mixtape's display name. With one, the
+    // select doesn't render and the click shares the primary.
+    if (mixtapeName) {
+      await this.page.getByLabel('Mixtape to share').selectOption({ label: mixtapeName });
+    }
     // Form action via use:enhance — no hard nav, so `awaitHydrated`
     // would return instantly off the still-mounted layout. Wait on
     // the action's response instead, which fires only when the
     // server-side INSERT has committed.
     await actAndExpectSuccess(this.page, 'shareWith', () =>
       this.page.getByRole('button', { name: /share my mixtape with this group/i }).click()
+    );
+  }
+
+  /**
+   * Walk the group-born creation flow: the "Make a mixtape just for
+   * this group" link → the /g/{slug}/new-mixtape form. `name`
+   * overrides the prefilled "{Group name} mixtape"; `copyOf` picks
+   * the "Copy of {mixtape}" radio (default stays Blank).
+   */
+  async makeGroupMixtape(opts: { name?: string; copyOf?: string } = {}): Promise<void> {
+    await this.page.getByRole('link', { name: 'Make a mixtape just for this group' }).click();
+    await this.page.waitForURL(`**/g/${this.slug}/new-mixtape`);
+    await awaitHydrated(this.page);
+
+    if (opts.name) {
+      const nameInput = this.page.getByLabel('Mixtape name');
+      await nameInput.fill('');
+      await nameInput.fill(opts.name);
+    }
+    if (opts.copyOf) {
+      await this.page.getByRole('radio', { name: `Copy of ${opts.copyOf}` }).check();
+    }
+    await actAndExpectSuccess(this.page, 'new-mixtape', () =>
+      this.page.getByRole('button', { name: 'Create mixtape' }).click()
     );
   }
 

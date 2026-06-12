@@ -10,26 +10,49 @@ export class Mixtape {
   readonly page: Page;
   readonly handle: string;
   readonly displayName: string;
+  /** Slug of a group-born mixtape; undefined = the primary at /{handle}. */
+  readonly slug?: string;
+  /** Display name of a group-born mixtape (its h1). */
+  readonly name?: string;
 
-  constructor(page: Page, handle: string, displayName: string) {
+  constructor(
+    page: Page,
+    handle: string,
+    displayName: string,
+    opts: { slug?: string; name?: string } = {}
+  ) {
     this.page = page;
     this.handle = handle;
     this.displayName = displayName;
+    this.slug = opts.slug;
+    this.name = opts.name;
   }
 
-  /** Open the public-facing mixtape page (/{handle}). */
+  /** Public path: /{handle} for the primary, /{handle}/{slug} otherwise. */
+  get path(): string {
+    return this.slug ? `/${this.handle}/${this.slug}` : `/${this.handle}`;
+  }
+
+  /** Open the public-facing mixtape page. */
   async open(): Promise<void> {
-    await this.page.goto(`/${this.handle}`);
+    await this.page.goto(this.path);
   }
 
-  /** Open the editor at /{handle}/edit. */
+  /**
+   * Open the editor. The primary still enters via the legacy /edit
+   * URL (redirect shim) until Phase G flips it; group-born mixtapes
+   * have only ever had /_edit.
+   */
   async openEditor(): Promise<void> {
-    await this.page.goto(`/${this.handle}/edit`);
+    await this.page.goto(this.slug ? `${this.path}/_edit` : `/${this.handle}/edit`);
   }
 
-  /** Title heading visible on /{handle}. */
+  /** Title heading: the mixtape's name, or the primary's default. */
   title(): Locator {
-    return this.page.getByRole('heading', { name: `${this.displayName}'s mixtape`, level: 1 });
+    return this.page.getByRole('heading', {
+      name: this.name ?? `${this.displayName}'s mixtape`,
+      level: 1
+    });
   }
 
   /** Number of songs in the meta line of /{handle}. */
@@ -83,6 +106,20 @@ export class Mixtape {
     }
     await actAndExpectSuccess(this.page, 'save_story', () =>
       row.getByRole('button', { name: /save story/i }).click()
+    );
+  }
+
+  /**
+   * Delete the song at `position` (1-based) via the editor's
+   * remove → confirm flow.
+   */
+  async deleteSong(position: number): Promise<void> {
+    await this.openEditor();
+    await awaitHydrated(this.page);
+    const row = this.page.getByTestId('song-row').nth(position - 1);
+    await row.getByRole('button', { name: 'Remove song' }).click();
+    await actAndExpectSuccess(this.page, 'delete', () =>
+      row.getByRole('button', { name: 'Confirm' }).click()
     );
   }
 

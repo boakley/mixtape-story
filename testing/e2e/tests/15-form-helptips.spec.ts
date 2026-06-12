@@ -7,6 +7,8 @@
 
 import { test, expect } from '../fixtures/test';
 import { awaitHydrated } from '../helpers/hydration';
+import { workerGroupSlug } from '../fixtures/auth';
+import { createGroup } from '../pages/group';
 
 test(
   'login form: Email field has a HelpTip with descriptive text',
@@ -77,6 +79,27 @@ test(
     await urlHelp.click();
     await expect(creator.page.getByRole('tooltip')).toContainText(/songlink|odesli|universal link/i);
     await creator.page.keyboard.press('Escape');
+  }
+);
+
+test(
+  '/g/{slug}/new-mixtape: name and start-from have HelpTips',
+  { tag: ['@feature:group', '@role:creator'] },
+  async ({ creator }) => {
+    const slug = workerGroupSlug('helptips');
+    await createGroup(creator.page, { slug, name: 'HelpTips Circle' });
+    await creator.page.goto(`/g/${slug}/new-mixtape`);
+    await awaitHydrated(creator.page);
+
+    await expect(
+      creator.page.getByRole('button', { name: 'Help: Mixtape name' })
+    ).toBeVisible();
+    await expect(creator.page.getByRole('button', { name: 'Help: Start from' })).toBeVisible();
+
+    await creator.page.getByRole('button', { name: 'Help: Start from' }).click();
+    await expect(creator.page.getByRole('tooltip')).toContainText(/copy|blank/i);
+    await creator.page.keyboard.press('Escape');
+    await expect(creator.page.getByRole('tooltip')).toHaveCount(0);
   }
 );
 
