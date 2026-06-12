@@ -296,6 +296,16 @@
             {#if form && 'error' in form && form.error}
               <p role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
             {/if}
+            <p class="mt-3">
+              <a
+                href="/g/{data.group.slug}/new-mixtape"
+                class="text-sm text-ink"
+                ><span aria-hidden="true">→ </span><span
+                  class="underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+                  >Make a mixtape just for this group</span
+                ></a
+              >
+            </p>
           {/if}
         </section>
       {:else}
@@ -361,6 +371,16 @@
             {#if form && 'error' in form && form.error}
               <p role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
             {/if}
+            <p class="mt-3">
+              <a
+                href="/g/{data.group.slug}/new-mixtape"
+                class="text-sm text-ink"
+                ><span aria-hidden="true">→ </span><span
+                  class="underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+                  >Make a mixtape just for this group</span
+                ></a
+              >
+            </p>
           {:else}
             <form method="POST" action="?/unshareFrom" use:enhance class="mt-6">
               <button

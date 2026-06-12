@@ -26,12 +26,12 @@ test(
     await creator.page.waitForURL(`**/g/${slug}/new-mixtape`);
 
     // Name prefilled from the group; Blank is the default start.
-    await expect(creator.page.getByLabel('Mixtape name')).toHaveValue(
+    await expect(creator.page.getByLabel('Mixtape name', { exact: true })).toHaveValue(
       'The Family Table mixtape'
     );
     await expect(creator.page.getByRole('radio', { name: 'Blank' })).toBeChecked();
 
-    const nameInput = creator.page.getByLabel('Mixtape name');
+    const nameInput = creator.page.getByLabel('Mixtape name', { exact: true });
     await nameInput.fill('Family Cuts');
     await creator.page.getByRole('button', { name: 'Create mixtape' }).click();
 

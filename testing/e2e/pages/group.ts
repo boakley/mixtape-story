@@ -61,7 +61,7 @@ export class Group {
     await awaitHydrated(this.page);
 
     if (opts.name) {
-      const nameInput = this.page.getByLabel('Mixtape name');
+      const nameInput = this.page.getByLabel('Mixtape name', { exact: true });
       await nameInput.fill('');
       await nameInput.fill(opts.name);
     }
