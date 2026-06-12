@@ -5,6 +5,7 @@ import { parseSongList, resolveBatch } from '$lib/server/music/parse-list';
 import { searchCached } from '$lib/server/music/itunes-cache';
 import type { Track } from '$lib/server/music/types';
 import { triggerOgRender } from '$lib/server/og-render';
+import { requireMixtapeOwner } from '$lib/server/mixtape-actions';
 import type { Actions, PageServerLoad } from './$types';
 
 type SongWithStory = SongRow & { stories: { text: string } | { text: string }[] | null };
@@ -13,32 +14,17 @@ export const load: PageServerLoad = async ({ params, locals: { supabase, safeGet
   const { user } = await safeGetSession();
   if (!user) throw redirect(303, '/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, handle, display_name')
-    .eq('handle', params.handle)
-    .maybeSingle<Pick<ProfileRow, 'id' | 'handle' | 'display_name'>>();
-
-  if (!profile) throw error(404, 'Mixtape not found');
-  if (profile.id !== user.id) throw error(403, 'This is not your mixtape');
-
-  // Each profile owns exactly one mixtape entity (v1). The editor
-  // operates on it directly; the user's shares with groups don't change
-  // anything about the editor's surface — edits propagate to wherever
-  // the mixtape is shared because there's only one row.
-  const { data: personalMixtape } = await supabase
-    .from('mixtapes')
-    .select('id')
-    .eq('profile_id', profile.id)
-    .maybeSingle();
-  if (!personalMixtape) throw error(500, 'Personal mixtape missing — contact support.');
+  // Shared owner/slug resolution — edits propagate to every group a
+  // mixtape is shared with because there's only one row per mixtape.
+  const own = await requireMixtapeOwner(params, { safeGetSession });
+  if (!own.ok) throw error(own.status, own.message);
 
   const { data: rows, error: songsErr } = await supabase
     .from('songs')
     .select(
       'id, owner_id, position, title, artist, album, release_year, memory_year, isrc, album_art_url, source_url, songlink_url, link_status, link_attempts, link_last_attempt, link_last_error, added_at, stories(text)'
     )
-    .eq('mixtape_id', personalMixtape.id)
+    .eq('mixtape_id', own.mixtape.id)
     .order('position');
 
   if (songsErr) throw error(500, songsErr.message);
@@ -50,36 +36,24 @@ export const load: PageServerLoad = async ({ params, locals: { supabase, safeGet
   });
 
   return {
-    handle: profile.handle,
-    displayName: profile.display_name,
+    handle: own.profile.handle,
+    displayName: own.profile.display_name,
+    mixtapeSlug: own.mixtape.slug,
+    mixtapeName: own.mixtape.name,
     songs
   };
 };
 
+// Thin fail()-shaped adapter over the shared resolver — the editor's
+// actions return fail payloads where the reader's inline-edit actions
+// build their own. One resolver, two wrappers.
 async function getOwnerOrFail(
-  supabase: App.Locals['supabase'],
-  handle: string,
-  userId: string
+  params: { handle: string; slug?: string },
+  locals: Pick<App.Locals, 'safeGetSession'>
 ): Promise<{ ownerId: string; mixtapeId: string } | { fail: ReturnType<typeof fail> }> {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('handle', handle)
-    .maybeSingle();
-  if (!profile) return { fail: fail(404, { error: 'Mixtape not found' }) };
-  if (profile.id !== userId) return { fail: fail(403, { error: 'Not your mixtape' }) };
-
-  // Each profile owns one mixtape entity (v1); the editor operates on
-  // it. Edits propagate to every group the mixtape is shared with
-  // because there's only one row to update.
-  const { data: mixtape } = await supabase
-    .from('mixtapes')
-    .select('id')
-    .eq('profile_id', profile.id)
-    .maybeSingle();
-  if (!mixtape) return { fail: fail(500, { error: 'Personal mixtape missing — contact support.' }) };
-
-  return { ownerId: profile.id, mixtapeId: mixtape.id as string };
+  const own = await requireMixtapeOwner(params, locals);
+  if (!own.ok) return { fail: fail(own.status, { error: own.message }) };
+  return { ownerId: own.profile.id, mixtapeId: own.mixtape.id };
 }
 
 async function nextPosition(
@@ -102,7 +76,7 @@ export const actions: Actions = {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
 
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -140,7 +114,7 @@ export const actions: Actions = {
   add_track: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -200,7 +174,7 @@ export const actions: Actions = {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
 
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -260,7 +234,7 @@ export const actions: Actions = {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
 
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -348,7 +322,7 @@ export const actions: Actions = {
   parse_list: async ({ request, params, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -458,7 +432,7 @@ export const actions: Actions = {
   save_story: async ({ request, params, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -496,7 +470,7 @@ export const actions: Actions = {
   save_meta: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -527,7 +501,7 @@ export const actions: Actions = {
   reorder: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();
@@ -563,7 +537,7 @@ export const actions: Actions = {
   delete: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) return fail(401, { error: 'Sign in required' });
-    const own = await getOwnerOrFail(supabase, params.handle, user.id);
+    const own = await getOwnerOrFail(params, { safeGetSession });
     if ('fail' in own) return own.fail;
 
     const data = await request.formData();

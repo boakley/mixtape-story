@@ -29,10 +29,10 @@ const SOURCE_SONG = {
 
 describe('cloneSongRows', () => {
   it('strips identity and timestamps, re-homes to the target mixtape', () => {
-    const [clone] = cloneSongRows([SOURCE_SONG], {
+    const clone = cloneSongRows([SOURCE_SONG], {
       mixtapeId: 'mixtape-new',
       ownerId: 'owner-a'
-    });
+    })[0]!;
     expect(clone).not.toHaveProperty('id');
     expect(clone).not.toHaveProperty('added_at');
     expect(clone.mixtape_id).toBe('mixtape-new');
@@ -40,10 +40,10 @@ describe('cloneSongRows', () => {
   });
 
   it('preserves content, ordering, and resolver state', () => {
-    const [clone] = cloneSongRows([SOURCE_SONG], {
+    const clone = cloneSongRows([SOURCE_SONG], {
       mixtapeId: 'mixtape-new',
       ownerId: 'owner-a'
-    });
+    })[0]!;
     expect(clone.position).toBe(3);
     expect(clone.title).toBe('Born in the U.S.A.');
     expect(clone.artist).toBe('Bruce Springsteen');
