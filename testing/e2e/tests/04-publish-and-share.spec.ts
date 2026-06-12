@@ -4,6 +4,9 @@
 // regression that would silently wreck the WhatsApp unfurl.
 
 import { test, expect } from '../fixtures/test';
+import { workerGroupSlug } from '../fixtures/auth';
+import { createGroup } from '../pages/group';
+import { Mixtape } from '../pages/mixtape';
 
 test(
   'the public page exposes the right OG metadata',
@@ -45,3 +48,31 @@ test(
   // button is reachable).
   await expect(creator.page.getByRole('button', { name: /^Share$/ })).toBeVisible();
 });
+
+test(
+  'the OG card endpoint shows this mixtape, not the rest of the catalog',
+  { tag: ['@feature:og', '@feature:group', '@role:creator'] },
+  async ({ creator }) => {
+    // Primary has one artist; a group-born mixtape has a different
+    // one. The /og/{handle} SVG must scope by mixtape_id — the launch
+    // review found it querying by owner_id, which would leak the
+    // group-born artist into the primary's share card.
+    await creator.mixtape.addSongsByList(['Such Great Heights - The Postal Service']);
+    const slug = workerGroupSlug('og-scope');
+    const group = await createGroup(creator.page, { slug, name: 'OG Scope Circle' });
+    await group.makeGroupMixtape({ name: 'OG Side Mixtape' });
+    await creator.page.waitForURL(`**/${creator.handle}/${slug}/_edit`);
+    const side = new Mixtape(creator.page, creator.handle, creator.displayName, {
+      slug,
+      name: 'OG Side Mixtape'
+    });
+    await side.addSongsByList(['Thunder Road - Bruce Springsteen']);
+
+    const res = await creator.page.request.get(`/og/${creator.handle}`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toContain('image/svg');
+    const svg = await res.text();
+    expect(svg).toContain('The Postal Service');
+    expect(svg).not.toContain('Bruce Springsteen');
+  }
+);

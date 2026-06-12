@@ -53,9 +53,12 @@ export function workerHandle(base: string): string {
 export async function seedUser(opts: {
   baseHandle: string;
   displayName: string;
+  /** Email domain. `e2e-admin.local` makes the user an admin via the
+   *  ADMIN_EMAILS wildcard entry (see src/lib/server/admin.ts). */
+  emailDomain?: string;
 }): Promise<SeededUser & { password: string }> {
   const handle = workerHandle(opts.baseHandle);
-  const email = uniqueEmail(handle);
+  const email = uniqueEmail(handle).replace('@e2e.local', `@${opts.emailDomain ?? 'e2e.local'}`);
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
@@ -140,8 +143,8 @@ export async function wipeTestData(): Promise<void> {
   const mine = (page?.users ?? []).filter((u) => {
     if (ids.has(u.id)) return true;
     const email = u.email ?? '';
-    if (new RegExp(`-w${idx}-\\d+-\\d+@e2e\\.local$`).test(email)) return true;
-    const anon = email.match(/^[a-z]+-(\d+)@e2e\.local$/);
+    if (new RegExp(`-w${idx}-\\d+-\\d+@(e2e|e2e-admin)\\.local$`).test(email)) return true;
+    const anon = email.match(/^[a-z]+-(\d+)@(e2e|e2e-admin)\.local$/);
     return anon ? Date.now() - Number(anon[1]) > STALE_MS : false;
   });
 

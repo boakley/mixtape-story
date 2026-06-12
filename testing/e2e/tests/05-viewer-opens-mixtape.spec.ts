@@ -32,3 +32,21 @@ test(
   const firstSong = visitor.page.locator('article').first();
   await expect(firstSong.getByText(/listen|preview/i).first()).toBeVisible();
 });
+
+test(
+  'the footer privacy link leads to a real privacy page',
+  { tag: ['@feature:public', '@role:viewer'] },
+  async ({ creator, visitor }) => {
+    await creator.mixtape.addSongsByList(['Such Great Heights - The Postal Service']);
+    await visitor.page.goto(`/${creator.handle}`);
+    await visitor.page.getByRole('link', { name: 'Privacy' }).click();
+    await visitor.page.waitForURL('**/privacy');
+    await expect(
+      visitor.page.getByRole('heading', { name: 'Privacy', level: 1 })
+    ).toBeVisible();
+    // The page's load-bearing promise: a working deletion contact.
+    await expect(
+      visitor.page.getByRole('link', { name: 'bryan@mixtapestory.com' })
+    ).toBeVisible();
+  }
+);

@@ -90,6 +90,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase }, setHea
     .from('mixtapes')
     .select('id')
     .eq('profile_id', profile.id)
+    .is('slug', null)
     .maybeSingle<{ id: string }>();
 
   const { data: songs } = personalMixtape
