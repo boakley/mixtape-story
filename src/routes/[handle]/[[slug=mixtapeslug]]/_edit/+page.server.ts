@@ -3,7 +3,7 @@ import type { ProfileRow, SongRow } from '$lib/types';
 import { resolveSong, MusicServiceError, normalizeSourceUrl } from '$lib/server/music';
 import { parseSongList, resolveBatch } from '$lib/server/music/parse-list';
 import { searchCached } from '$lib/server/music/itunes-cache';
-import type { Track } from '$lib/server/music/types';
+import type { CachedSongPayload, Track } from '$lib/server/music/types';
 import { triggerOgRender } from '$lib/server/og-render';
 import { requireMixtapeOwner } from '$lib/server/mixtape-actions';
 import type { Actions, PageServerLoad } from './$types';
@@ -70,6 +70,93 @@ async function nextPosition(
   return ((data?.position as number | undefined) ?? 0) + 1;
 }
 
+
+// The one song-insertion flow. All four add paths (manual entry,
+// search pick, URL resolve, bulk import) converge here: position
+// assignment, cache lookup, insert, the empty-story placeholder, and
+// the primary-only OG re-render. A track without a normalized source
+// URL is a manual entry; a cache hit lands as 'done', a miss as
+// 'pending' for the resolve-queue worker.
+type InsertableTrack = {
+  title: string;
+  artist?: string | null;
+  album?: string | null;
+  releaseYear?: number | null;
+  isrc?: string | null;
+  albumArtUrl?: string | null;
+  previewUrl?: string | null;
+  normalizedSourceUrl?: string | null;
+};
+
+async function insertSongs(
+  supabase: App.Locals['supabase'],
+  own: { ownerId: string; mixtapeId: string },
+  tracks: InsertableTrack[],
+  ogContext: {
+    slug?: string | undefined;
+    handle: string;
+    fetch: typeof globalThis.fetch;
+    platform: App.Platform | undefined;
+  }
+): Promise<{ imported: number } | { fail: ReturnType<typeof fail> }> {
+  const startPos = await nextPosition(supabase, own.mixtapeId);
+
+  const sources = tracks.map((t) => t.normalizedSourceUrl).filter((s): s is string => !!s);
+  const cacheMap = new Map<string, CachedSongPayload>();
+  if (sources.length > 0) {
+    const { data: cached } = await supabase
+      .from('song_cache')
+      .select('source_url, payload')
+      .in('source_url', sources);
+    for (const row of cached ?? []) {
+      const r = row as { source_url: string; payload: CachedSongPayload };
+      cacheMap.set(r.source_url, r.payload);
+    }
+  }
+
+  const inserts = tracks.map((t, i) => {
+    const normalized = t.normalizedSourceUrl || null;
+    const hit = normalized ? cacheMap.get(normalized) : null;
+    return {
+      owner_id: own.ownerId,
+      mixtape_id: own.mixtapeId,
+      position: startPos + i,
+      title: t.title,
+      artist: t.artist ?? null,
+      album: t.album ?? null,
+      release_year: t.releaseYear ?? null,
+      isrc: t.isrc ?? null,
+      album_art_url: t.albumArtUrl ?? null,
+      preview_url: t.previewUrl ?? null,
+      source_url: normalized,
+      songlink_url: hit?.songlinkUrl ?? null,
+      links_by_platform: hit?.linksByPlatform ?? null,
+      link_status: !normalized ? 'manual' : hit?.songlinkUrl ? 'done' : 'pending'
+    };
+  });
+
+  const { data: created, error: insertErr } = await supabase
+    .from('songs')
+    .insert(inserts)
+    .select('id');
+  if (insertErr || !created) {
+    return { fail: fail(500, { error: insertErr?.message ?? 'Could not add song' }) };
+  }
+
+  // Placeholder story rows — the editor's Story button keys off them
+  // existing. The reader falls back gracefully if one is missing, but
+  // a failed insert here is still worth surfacing.
+  const { error: storyErr } = await supabase
+    .from('stories')
+    .insert(created.map((r) => ({ song_id: (r as { id: string }).id, text: '' })));
+  if (storyErr) return { fail: fail(500, { error: storyErr.message }) };
+
+  if (!ogContext.slug) {
+    triggerOgRender(ogContext.handle, { fetch: ogContext.fetch, platform: ogContext.platform });
+  }
+  return { imported: created.length };
+}
+
 export const actions: Actions = {
   // Add a single song manually (no URL resolution).
   manual: async ({ request, params, fetch, platform, locals: { supabase, safeGetSession } }) => {
@@ -86,25 +173,13 @@ export const actions: Actions = {
 
     if (!title) return fail(400, { error: 'A title is required.' });
 
-    const position = await nextPosition(supabase, own.mixtapeId);
-    const { data: song, error: insertErr } = await supabase
-      .from('songs')
-      .insert({
-        owner_id: own.ownerId,
-        mixtape_id: own.mixtapeId,
-        position,
-        title,
-        artist,
-        album,
-        link_status: 'manual'
-      })
-      .select('id')
-      .single();
-
-    if (insertErr || !song) return fail(500, { error: insertErr?.message ?? 'Could not add song' });
-
-    await supabase.from('stories').insert({ song_id: song.id, text: '' });
-    if (!params.slug) triggerOgRender(params.handle, { fetch, platform });
+    const result = await insertSongs(supabase, own, [{ title, artist, album }], {
+      slug: params.slug,
+      handle: params.handle,
+      fetch,
+      platform
+    });
+    if ('fail' in result) return result.fail;
     return { ok: true };
   },
 
@@ -131,39 +206,13 @@ export const actions: Actions = {
       return fail(400, { error: 'Track is missing title or source URL' });
     }
 
-    const position = await nextPosition(supabase, own.mixtapeId);
-    const normalized = normalizeSourceUrl(track.sourceUrl);
-
-    const { data: cached } = await supabase
-      .from('song_cache')
-      .select('payload')
-      .eq('source_url', normalized)
-      .maybeSingle();
-    const cachedPayload = (cached?.payload ?? null) as { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> } | null;
-
-    const { data: song, error: insertErr } = await supabase
-      .from('songs')
-      .insert({
-        owner_id: own.ownerId,
-        mixtape_id: own.mixtapeId,
-        position,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        release_year: track.releaseYear,
-        isrc: track.isrc,
-        album_art_url: track.albumArtUrl,
-        preview_url: track.previewUrl,
-        source_url: normalized,
-        songlink_url: cachedPayload?.songlinkUrl ?? null,
-        links_by_platform: cachedPayload?.linksByPlatform ?? null,
-        link_status: cachedPayload?.songlinkUrl ? 'done' : 'pending'
-      })
-      .select('id')
-      .single();
-    if (insertErr || !song) return fail(500, { error: insertErr?.message ?? 'Insert failed' });
-    await supabase.from('stories').insert({ song_id: song.id, text: '' });
-    if (!params.slug) triggerOgRender(params.handle, { fetch, platform });
+    const result = await insertSongs(
+      supabase,
+      own,
+      [{ ...track, normalizedSourceUrl: normalizeSourceUrl(track.sourceUrl) }],
+      { slug: params.slug, handle: params.handle, fetch, platform }
+    );
+    if ('fail' in result) return result.fail;
     return { ok: true };
   },
 
@@ -189,41 +238,13 @@ export const actions: Actions = {
       return fail(400, { error: message, url });
     }
 
-    const position = await nextPosition(supabase, own.mixtapeId);
-    const normalized = normalizeSourceUrl(track.sourceUrl);
-
-    const { data: cached } = await supabase
-      .from('song_cache')
-      .select('payload')
-      .eq('source_url', normalized)
-      .maybeSingle();
-
-    const cachedPayload = (cached?.payload ?? null) as { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> } | null;
-
-    const { data: song, error: insertErr } = await supabase
-      .from('songs')
-      .insert({
-        owner_id: own.ownerId,
-        mixtape_id: own.mixtapeId,
-        position,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        release_year: track.releaseYear,
-        isrc: track.isrc,
-        album_art_url: track.albumArtUrl,
-        preview_url: track.previewUrl,
-        source_url: normalized,
-        songlink_url: cachedPayload?.songlinkUrl ?? null,
-        links_by_platform: cachedPayload?.linksByPlatform ?? null,
-        link_status: cachedPayload?.songlinkUrl ? 'done' : 'pending'
-      })
-      .select('id')
-      .single();
-
-    if (insertErr || !song) return fail(500, { error: insertErr?.message ?? 'Could not add song' });
-    await supabase.from('stories').insert({ song_id: song.id, text: '' });
-    if (!params.slug) triggerOgRender(params.handle, { fetch, platform });
+    const result = await insertSongs(
+      supabase,
+      own,
+      [{ ...track, normalizedSourceUrl: normalizeSourceUrl(track.sourceUrl) }],
+      { slug: params.slug, handle: params.handle, fetch, platform }
+    );
+    if ('fail' in result) return result.fail;
     return { ok: true };
   },
 
@@ -261,61 +282,14 @@ export const actions: Actions = {
       return fail(400, { error: 'No songs selected.' });
     }
 
-    const startPos = await nextPosition(supabase, own.mixtapeId);
-
-    // Cache hits become 'done' immediately; misses go to 'pending'; entries
-    // without a source URL at all become 'manual'.
-    const sources = tracks.map((t) => t.normalizedSourceUrl).filter((s) => !!s);
-    type CachedPayload = { songlinkUrl?: string; linksByPlatform?: Record<string, { url: string }> };
-    const cacheMap = new Map<string, CachedPayload>();
-    if (sources.length > 0) {
-      const { data: cached } = await supabase
-        .from('song_cache')
-        .select('source_url, payload')
-        .in('source_url', sources);
-      for (const row of cached ?? []) {
-        const r = row as { source_url: string; payload: CachedPayload };
-        cacheMap.set(r.source_url, r.payload);
-      }
-    }
-
-    const inserts = tracks.map((t, i) => {
-      const normalized = t.normalizedSourceUrl || null;
-      const hit = normalized ? cacheMap.get(normalized) : null;
-      const linkStatus = !normalized ? 'manual' : hit?.songlinkUrl ? 'done' : 'pending';
-      return {
-        owner_id: own.ownerId,
-        mixtape_id: own.mixtapeId,
-        position: startPos + i,
-        title: t.title,
-        artist: t.artist,
-        album: t.album,
-        release_year: t.releaseYear,
-        album_art_url: t.albumArtUrl,
-        preview_url: t.previewUrl,
-        source_url: normalized,
-        songlink_url: hit?.songlinkUrl ?? null,
-        links_by_platform: hit?.linksByPlatform ?? null,
-        link_status: linkStatus
-      };
+    const result = await insertSongs(supabase, own, tracks, {
+      slug: params.slug,
+      handle: params.handle,
+      fetch,
+      platform
     });
-
-    const { data: created, error: insertErr } = await supabase
-      .from('songs')
-      .insert(inserts)
-      .select('id');
-
-    if (insertErr || !created) return fail(500, { error: insertErr?.message ?? 'Insert failed' });
-
-    if (created.length > 0) {
-      await supabase
-        .from('stories')
-        .insert(created.map((r) => ({ song_id: (r as { id: string }).id, text: '' })));
-    }
-
-    if (!params.slug) triggerOgRender(params.handle, { fetch, platform });
-
-    return { ok: true, imported: created.length };
+    if ('fail' in result) return result.fail;
+    return { ok: true, imported: result.imported };
   },
 
   // Free-text list paste: parse, search iTunes per entry, return a preview.

@@ -12,6 +12,12 @@ export type Track = {
 
 export type UrlKind = 'playlist' | 'song';
 
+/** Shape of a song_cache payload row — what the Odesli worker stores. */
+export type CachedSongPayload = {
+  songlinkUrl?: string;
+  linksByPlatform?: Record<string, { url: string }>;
+};
+
 export interface MusicService {
   name: string;
   matchUrl(url: string): UrlKind | null;

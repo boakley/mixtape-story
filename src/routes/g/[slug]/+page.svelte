@@ -293,6 +293,10 @@
                   >
                   <select
                     name="mixtape_id"
+                    aria-invalid={form && 'error' in form && form.error ? 'true' : undefined}
+                    aria-describedby={form && 'error' in form && form.error
+                      ? 'share-error'
+                      : undefined}
                     class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm"
                   >
                     {#each data.viewerMixtapes as m (m.id)}
@@ -310,7 +314,7 @@
               </button>
             </form>
             {#if form && 'error' in form && form.error}
-              <p role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
+              <p id="share-error" role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
             {/if}
             <p class="mt-3">
               <a
@@ -384,6 +388,10 @@
                   >
                   <select
                     name="mixtape_id"
+                    aria-invalid={form && 'error' in form && form.error ? 'true' : undefined}
+                    aria-describedby={form && 'error' in form && form.error
+                      ? 'share-error'
+                      : undefined}
                     class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm"
                   >
                     {#each data.viewerMixtapes as m (m.id)}
@@ -401,7 +409,7 @@
               </button>
             </form>
             {#if form && 'error' in form && form.error}
-              <p role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
+              <p id="share-error" role="alert" class="mt-2 text-sm text-accent">{form.error}</p>
             {/if}
             <p class="mt-3">
               <a

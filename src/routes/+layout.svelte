@@ -133,28 +133,32 @@
         </p>
         <hr class="border-rule" />
         {#if data.viewerHandle && data.viewerMixtapes.length > 0}
-          <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">My mixtapes</p>
-          {#each data.viewerMixtapes as m (m.slug ?? '')}
-            <a
-              href={m.slug ? `/${data.viewerHandle}/${m.slug}` : `/${data.viewerHandle}`}
-              onclick={closeMenu}
-              class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
-            >
-              {m.name ?? `${data.viewerDisplayName ?? data.viewerHandle}'s mixtape`}
-            </a>
-          {/each}
+          <nav aria-label="My mixtapes">
+            <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">My mixtapes</p>
+            {#each data.viewerMixtapes as m (m.slug ?? '')}
+              <a
+                href={m.slug ? `/${data.viewerHandle}/${m.slug}` : `/${data.viewerHandle}`}
+                onclick={closeMenu}
+                class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+              >
+                {m.name ?? `${data.viewerDisplayName ?? data.viewerHandle}'s mixtape`}
+              </a>
+            {/each}
+          </nav>
         {/if}
         {#if data.viewerGroups.length > 0}
-          <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">My groups</p>
-          {#each data.viewerGroups as g (g.slug)}
-            <a
-              href="/g/{g.slug}"
-              onclick={closeMenu}
-              class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
-            >
-              {g.name}
-            </a>
-          {/each}
+          <nav aria-label="My groups">
+            <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">My groups</p>
+            {#each data.viewerGroups as g (g.slug)}
+              <a
+                href="/g/{g.slug}"
+                onclick={closeMenu}
+                class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+              >
+                {g.name}
+              </a>
+            {/each}
+          </nav>
         {/if}
         {#if isOwnerOfThisMixtape}
           <hr class="border-rule" />

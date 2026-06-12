@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   if (!ctx.ok) throw error(ctx.status, ctx.message);
   const { admin, user, group } = ctx;
 
-  const [{ data: groupRow }, { data: profile }, { data: mixtapes }] = await Promise.all([
+  const [groupRes, profileRes, mixtapesRes] = await Promise.all([
     admin.from('groups').select('name').eq('id', group.id).maybeSingle(),
     admin.from('profiles').select('handle, display_name').eq('id', user.id).maybeSingle(),
     admin
@@ -26,6 +26,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       .eq('profile_id', user.id)
       .order('created_at')
   ]);
+  const loadErr = groupRes.error ?? profileRes.error ?? mixtapesRes.error;
+  if (loadErr) throw error(500, loadErr.message);
+  const { data: groupRow } = groupRes;
+  const { data: profile } = profileRes;
+  const { data: mixtapes } = mixtapesRes;
   if (!groupRow || !profile) throw error(404, 'Group not found');
 
   const rows = (mixtapes ?? []) as { id: string; slug: string | null; name: string | null }[];
@@ -98,11 +103,12 @@ export const actions: Actions = {
     // The share is part of the birth: replace whatever this member
     // currently shows the group (usually their primary) with the new
     // group-born mixtape.
-    await admin
+    const { error: unshareErr } = await admin
       .from('mixtape_group_shares')
       .delete()
       .eq('profile_id', user.id)
       .eq('group_id', group.id);
+    if (unshareErr) return fail(500, { error: unshareErr.message });
     const { error: shareErr } = await admin
       .from('mixtape_group_shares')
       .insert({ mixtape_id: created.id as string, group_id: group.id });

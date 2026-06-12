@@ -21,7 +21,7 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, safeGetSessio
     // ☰ navigation: the viewer's mixtapes (primary — slug null — first,
     // then creation order) and the groups they belong to. Both queries
     // pass RLS with the user client.
-    const [{ data: mixtapes }, { data: memberships }] = await Promise.all([
+    const [mixtapesRes, membershipsRes] = await Promise.all([
       supabase
         .from('mixtapes')
         .select('slug, name, created_at')
@@ -32,6 +32,14 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, safeGetSessio
         .select('groups(slug, name)')
         .eq('profile_id', user.id)
     ]);
+
+    // Navigation isn't worth failing the whole page over — log and
+    // render the sections empty rather than 500ing every route.
+    if (mixtapesRes.error) console.error('layout: mixtapes query failed:', mixtapesRes.error.message);
+    if (membershipsRes.error)
+      console.error('layout: memberships query failed:', membershipsRes.error.message);
+    const { data: mixtapes } = mixtapesRes;
+    const { data: memberships } = membershipsRes;
 
     const rows = (mixtapes ?? []) as { slug: string | null; name: string | null }[];
     viewerMixtapes = [

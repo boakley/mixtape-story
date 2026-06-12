@@ -106,7 +106,7 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
       // (primary first — it feeds the chooser when there's more than
       // one), and what — if anything — they currently show this group
       // (one share per (user, group) since 0019).
-      const [{ data: ownRows }, { data: viewerProfile }, { data: share }] = await Promise.all([
+      const [ownRes, profileRes, shareRes] = await Promise.all([
         admin
           .from('mixtapes')
           .select('id, slug, name, created_at')
@@ -120,6 +120,11 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
           .eq('group_id', group.id)
           .maybeSingle()
       ]);
+      const queryErr = ownRes.error ?? profileRes.error ?? shareRes.error;
+      if (queryErr) throw error(500, queryErr.message);
+      const { data: ownRows } = ownRes;
+      const { data: viewerProfile } = profileRes;
+      const { data: share } = shareRes;
       const own = (ownRows ?? []) as { id: string; slug: string | null; name: string | null }[];
       const fallback = `${(viewerProfile?.display_name as string | undefined) ?? 'My'}'s mixtape`;
       viewerMixtapes = [...own.filter((m) => m.slug === null), ...own.filter((m) => m.slug !== null)]
@@ -430,11 +435,12 @@ export const actions: Actions = {
     const inviteId = String(data.get('invite_id') ?? '');
     if (!inviteId) return fail(400, { invite: { error: 'Missing invite id.' } });
 
-    await admin
+    const { error: revokeErr } = await admin
       .from('group_invites')
       .update({ revoked_at: new Date().toISOString() })
       .eq('id', inviteId)
       .eq('group_id', group.id);
+    if (revokeErr) return fail(500, { invite: { error: 'Could not revoke. Try again.' } });
 
     return { invite: { ok: true } };
   },
