@@ -118,18 +118,27 @@ export async function wipeTestData(): Promise<void> {
   //        auth user a profiles join can never see;
   //      - never abort the sweep on one transient deleteUser failure
   //        (retry once, then skip — the next test's wipe gets it).
-  const { data: page, error: lookupErr } = await admin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000
-  });
+  const [{ data: page, error: lookupErr }, { data: profileRows, error: profErr }] =
+    await Promise.all([
+      admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      admin.from('profiles').select('id').like('handle', `%-w${idx}`)
+    ]);
   if (lookupErr) throw new Error(`wipeTestData: listUsers failed: ${lookupErr.message}`);
+  if (profErr) throw new Error(`wipeTestData: profiles lookup failed: ${profErr.message}`);
 
-  // This worker's seeded users, plus any magic-link users (spec 01/08:
-  // `newcomer-{ts}@e2e.local` — no worker marker, so unclaimable per
-  // worker) older than 10 minutes by their embedded timestamp; fresh
-  // ones may belong to a sibling worker's in-flight test.
+  // Union of three nets:
+  //  - this worker's profiles (handle %-w{idx}) — catches magic-link
+  //    users (joiner-{ts}@…) who completed onboarding onto a worker
+  //    handle; their emails carry no worker marker;
+  //  - this worker's seeded users by email marker;
+  //  - profile-less @e2e.local users older than 10 minutes by their
+  //    embedded timestamp (a test that died before onboarding —
+  //    unclaimable per worker, so age-gated: a fresh one may belong
+  //    to a sibling worker's in-flight test).
   const STALE_MS = 10 * 60 * 1000;
+  const ids = new Set<string>((profileRows ?? []).map((p) => p.id as string));
   const mine = (page?.users ?? []).filter((u) => {
+    if (ids.has(u.id)) return true;
     const email = u.email ?? '';
     if (new RegExp(`-w${idx}-\\d+-\\d+@e2e\\.local$`).test(email)) return true;
     const anon = email.match(/^[a-z]+-(\d+)@e2e\.local$/);
