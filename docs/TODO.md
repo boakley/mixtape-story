@@ -10,6 +10,18 @@ freely.
     Right now I can click to jump to a mixtape, but it might be
     nice to drill into it without having to leave the page
 * features:
+  * highlight songs added since your last visit? The data mostly
+    exists already: songs.added_at + mixtape_visits.last_visit_at per
+    visitor (post-0019, keyed per mixtape). One wrinkle: the page-load
+    upsert overwrites last_visit_at before anything reads it, so the
+    query needs a read-before-write. One gap: group pages have no
+    visit tracking at all (no group_visits table), and that's arguably
+    where the feature matters most — the surface that aggregates other
+    people's activity. Honest skepticism (Bryan, 2026-06-12): typical
+    users probably don't revisit a mixtape repeatedly, so wait for
+    evidence of repeat visits before building. The visitor counts can
+    answer that — first_visit_at vs last_visit_at spread shows whether
+    anyone actually comes back.
   * can we add the ability to start with an actual apple music (or spotify?)
     playlist? Can we have a "play this playlist on apple music" link?
   * generate demos (stashed; largely working)
@@ -67,3 +79,11 @@ freely.
   creator who'd rather not look at it. The auto-drop on narrow
   viewports is wired via CSS; this is the explicit on-wide-screens
   toggle. Persist via the `useStoredState` rune like the view toggle.
+* gitleaks — open-source secret scanner that greps a repo (and its
+  history) for things that look like API keys, JWTs, private keys,
+  etc. Look up how to install it; main candidate uses are a
+  pre-commit hook (so `.env.local`, the Apple `*.p8` / `AuthKey_*`
+  files, and the Supabase service-role key never make it into a
+  commit) and a one-shot scan of the existing history. Probably
+  also worth as a CI gate eventually. Mentioned in a separate
+  conversation; flagged here so it doesn't get forgotten.

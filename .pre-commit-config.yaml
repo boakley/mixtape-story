@@ -1,0 +1,20 @@
+# Pre-commit hooks. Versioned with the repo so anyone who clones and
+# runs `pre-commit install` picks up the same gate.
+#
+# Currently a single hook: gitleaks, which scans staged files for
+# things that look like API keys, JWTs, private keys, etc. A baseline
+# scan against the full history found 0 leaks at the time this was
+# wired up; this hook keeps that property intact going forward.
+#
+# Manual runs:
+#   pre-commit run --all-files     # scan everything once
+#   pre-commit run gitleaks        # scan staged files only
+#
+# If a finding is a false positive (test fixture, doc example), add
+# it to .gitleaks.toml allowlists rather than skipping the hook.
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

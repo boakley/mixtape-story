@@ -1,11 +1,31 @@
 # mixtapestory.com
 
-A web app for making and sharing **mixtape stories** — a curated collection of songs, each accompanied by writing about why that song matters.
+**Share the music, share the stories.**
 
-**In private testing.** v1 audience is a small contemplative-writing group.
+A web app for making and sharing **mixtape stories** — a curated collection of songs, each accompanied by writing about why that song matters. Mixtapes are made *for* people: the v1 audience is a small contemplative-writing group, geographically scattered, using it to get to know one another.
+
+Live at [mixtapestory.com](https://mixtapestory.com).
+
+## Why this repo is public
+
+This codebase doubles as a working example of AI-collaborative quality engineering. It was built by an experienced SDET directing Claude Code, and the interesting part isn't that AI wrote code — it's the judgment trail: which things to ask AI to do, in what order, with what verification step.
+
+The headline numbers: a 100× stress run of the Playwright E2E suite passes 3,000 for 3,000 — zero flakes — re-verified after every framework change. With retries disabled entirely, every residual failure classified as local infrastructure: zero product bugs, zero test bugs.
+
+The full write-up lives at [developer.mixtapestory.com](https://developer.mixtapestory.com), with a companion series on LinkedIn.
+
+If you came for the testing story, start here:
+
+- [`docs/TESTING.md`](docs/TESTING.md) — philosophy, page-object design, and the deliberate omissions
+- [`testing/e2e/tests/`](testing/e2e/tests/) — numbered specs that read top-to-bottom as the v1 user journey
+- [`testing/e2e/helpers/hydration.ts`](testing/e2e/helpers/hydration.ts) — the hydration fence that took one spec's 14% flake rate to zero, suite-wide
+- [`testing/e2e/pages/`](testing/e2e/pages/) — page objects that speak the product's vocabulary, doubling as scripts for demo videos
+
+Product context:
 
 - [`CLAUDE.md`](CLAUDE.md) — operative product decisions
 - [`docs/design-notes.md`](docs/design-notes.md) — rationale and open questions
+- [`docs/design-language.md`](docs/design-language.md) — visual conventions
 - [`docs/PLAN.md`](docs/PLAN.md) — POC scope and v1 scaffold plan
 - [`docs/mixtapestories-vision.md`](docs/mixtapestories-vision.md) — the longer-form vision
 
@@ -191,6 +211,14 @@ flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
 The test suite is organized as the executable version of the v1 user journey —
 read top-to-bottom, the `e2e/` directory is a narrated tour of the product.
 
+The architecture in brief: a thin E2E layer of numbered journey specs; one real
+magic-link auth test against the local Supabase stack, with all other journeys
+using seeded sessions injected as cookies; worker-scoped handle prefixes so five
+parallel workers never collide; a `data-hydrated` body marker replacing
+`networkidle` waits; and admin-client seed helpers that fake third-party state
+when the integration isn't the thing under test. Every framework change is
+re-verified with a 100× stress run before it lands.
+
 ```sh
 pnpm run test:unit       # Vitest: fast, no browser
 pnpm run test:e2e        # Playwright (headed locally so you can watch)
@@ -199,3 +227,13 @@ pnpm run test:e2e:ui     # Playwright UI mode for debugging
 
 Philosophy, page-object design, fixtures, and the deliberate omissions live in
 [`docs/TESTING.md`](docs/TESTING.md).
+
+## License
+
+There isn't one, deliberately. The source is public to read and learn from — the
+testing architecture in particular — but it is not currently licensed for reuse
+or redistribution. It may be open-sourced later; until then, all rights reserved.
+
+## Author
+
+Bryan Oakley — [LinkedIn](https://www.linkedin.com/in/bryan-oakley-8689155/)
