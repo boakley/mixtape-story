@@ -180,14 +180,10 @@
     transition:fly={{ x: 320, duration: motionMs(240), opacity: 1 }}
     class="fixed bottom-0 right-0 top-0 z-[70] flex w-[84vw] flex-col overflow-y-auto border-l border-rule bg-paper shadow-xl sm:w-[280px]"
   >
-    <div class="flex items-center justify-between gap-3 px-3 pb-2 pt-3">
-      {#if data.user}
-        <p class="min-w-0 truncate text-xs text-ink-muted">
-          Signed in as <span class="text-ink">{data.user.email}</span>
-        </p>
-      {:else}
-        <p class="text-xs text-ink-muted">mixtapestory.com</p>
-      {/if}
+    <!-- Header carries only the close affordance; identity lives at
+         the bottom next to Sign out (same concern), where a two-line
+         layout gives the email room to show in full. -->
+    <div class="flex items-center justify-end px-3 pb-2 pt-3">
       <button
         type="button"
         onclick={closeMenu}
@@ -329,9 +325,12 @@
           </a>
         </div>
       {/if}
-      <!-- Sign out anchors to the bottom — the one place it can't be
-           buried mid-list. -->
+      <!-- Identity + Sign out anchor to the bottom — the one place
+           they can't be buried mid-list. break-all so even a long
+           email wraps in full instead of clipping. -->
       <div class="mt-auto border-t border-rule">
+        <p class="px-3 pt-3 text-xs text-ink-muted">Signed in as</p>
+        <p class="break-all px-3 text-xs text-ink">{data.user.email}</p>
         <form method="POST" action="/logout">
           <button
             type="submit"
