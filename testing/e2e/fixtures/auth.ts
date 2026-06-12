@@ -109,26 +109,42 @@ export async function wipeTestData(): Promise<void> {
     .like('slug', `e2e-w${idx}-%`);
   if (groupsErr) throw new Error(`wipeTestData: groups delete failed: ${groupsErr.message}`);
 
-  // 2. Look up worker-scoped profile leftovers, then delete via the
-  //    auth admin API. profiles.id == auth.users.id by design, so
-  //    deleting the auth user cascades the rest.
-  const { data: leftovers, error: lookupErr } = await admin
-    .from('profiles')
-    .select('id')
-    .like('handle', `%-w${idx}`);
-  if (lookupErr) throw new Error(`wipeTestData: profiles lookup failed: ${lookupErr.message}`);
+  // 2. Worker-scoped leftovers, deleted via the auth admin API
+  //    (profiles.id == auth.users.id, so the user delete cascades the
+  //    rest). Two marathon-run lessons baked in (the ×1000 run left
+  //    6,912 users behind and degraded GoTrue into a failure spiral):
+  //      - find users by their @e2e.local EMAIL, not via profiles —
+  //        a test that dies before onboarding leaves a profile-less
+  //        auth user a profiles join can never see;
+  //      - never abort the sweep on one transient deleteUser failure
+  //        (retry once, then skip — the next test's wipe gets it).
+  const { data: page, error: lookupErr } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000
+  });
+  if (lookupErr) throw new Error(`wipeTestData: listUsers failed: ${lookupErr.message}`);
 
-  for (const p of leftovers ?? []) {
-    let { error: delErr } = await admin.auth.admin.deleteUser(p.id as string);
+  // This worker's seeded users, plus any magic-link users (spec 01/08:
+  // `newcomer-{ts}@e2e.local` — no worker marker, so unclaimable per
+  // worker) older than 10 minutes by their embedded timestamp; fresh
+  // ones may belong to a sibling worker's in-flight test.
+  const STALE_MS = 10 * 60 * 1000;
+  const mine = (page?.users ?? []).filter((u) => {
+    const email = u.email ?? '';
+    if (new RegExp(`-w${idx}-\\d+-\\d+@e2e\\.local$`).test(email)) return true;
+    const anon = email.match(/^[a-z]+-(\d+)@e2e\.local$/);
+    return anon ? Date.now() - Number(anon[1]) > STALE_MS : false;
+  });
+
+  for (const u of mine) {
+    let { error: delErr } = await admin.auth.admin.deleteUser(u.id);
     if (delErr) {
-      // Under stress-run parallelism GoTrue's user lookup can fail
-      // transiently ("Database error loading user" — pool contention,
-      // not a missing user). One retry after a beat; a second failure
-      // is real and should throw.
       await new Promise((r) => setTimeout(r, 500));
-      ({ error: delErr } = await admin.auth.admin.deleteUser(p.id as string));
+      ({ error: delErr } = await admin.auth.admin.deleteUser(u.id));
     }
-    if (delErr) throw new Error(`wipeTestData: deleteUser(${p.id}) failed: ${delErr.message}`);
+    if (delErr) {
+      console.warn(`wipeTestData: deleteUser(${u.id}) failed twice, skipping: ${delErr.message}`);
+    }
   }
 }
 
