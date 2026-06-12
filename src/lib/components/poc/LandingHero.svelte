@@ -50,8 +50,45 @@
     </p>
   {/if}
 
-  <p class="mt-12 text-xs italic text-ink-muted">In private testing.</p>
-  <p class="mt-2 text-xs text-ink-muted">
+  <!-- The ten-second orientation, three beats. A zoomed-in
+       /how-it-works page is parked in docs/mockups/ (the handle is
+       already reserved); link it from here when it ships. -->
+  <section aria-labelledby="how-it-works-cap" class="mt-12 border-t border-rule pt-6">
+    <p id="how-it-works-cap" class="text-xs uppercase tracking-wider text-ink-muted">
+      How it works
+    </p>
+    <ol class="mt-4 space-y-3">
+      <li class="grid grid-cols-[1.25rem_1fr] gap-2">
+        <span class="font-mono text-xs leading-6 text-accent" aria-hidden="true">1</span>
+        <span>
+          <span class="block text-sm font-medium text-ink">Pick your songs</span>
+          <span class="block text-sm text-ink-muted"
+            >Paste a list, or search — we match them to an online catalog.</span
+          >
+        </span>
+      </li>
+      <li class="grid grid-cols-[1.25rem_1fr] gap-2">
+        <span class="font-mono text-xs leading-6 text-accent" aria-hidden="true">2</span>
+        <span>
+          <span class="block text-sm font-medium text-ink">Write why they matter</span>
+          <span class="block text-sm text-ink-muted"
+            >A memory, a person, a year. The story is the point.</span
+          >
+        </span>
+      </li>
+      <li class="grid grid-cols-[1.25rem_1fr] gap-2">
+        <span class="font-mono text-xs leading-6 text-accent" aria-hidden="true">3</span>
+        <span>
+          <span class="block text-sm font-medium text-ink">Share one link</span>
+          <span class="block text-sm text-ink-muted"
+            >Friends open each song in their own music app. No account needed to listen.</span
+          >
+        </span>
+      </li>
+    </ol>
+  </section>
+
+  <p class="mt-12 text-xs text-ink-muted">
     <a href="/privacy" class="underline decoration-rule underline-offset-4 hover:text-accent"
       >Privacy</a
     >

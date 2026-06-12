@@ -50,3 +50,15 @@ test(
     ).toBeVisible();
   }
 );
+
+test(
+  'a curious stranger reads how it works on the landing page',
+  { tag: ['@feature:public', '@role:viewer'] },
+  async ({ visitor }) => {
+    await visitor.page.goto('/');
+    await expect(visitor.page.getByText('How it works')).toBeVisible();
+    await expect(visitor.page.getByText('Pick your songs')).toBeVisible();
+    await expect(visitor.page.getByText('Write why they matter')).toBeVisible();
+    await expect(visitor.page.getByText('Share one link')).toBeVisible();
+  }
+);

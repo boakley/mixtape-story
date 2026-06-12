@@ -10,6 +10,10 @@ freely.
     Right now I can click to jump to a mixtape, but it might be
     nice to drill into it without having to leave the page
 * features:
+  * ship the /how-it-works page — built and parked in
+    docs/mockups/how-it-works-page.svelte (landing strip shipped alone;
+    handle already reserved). Revive when blog traffic suggests
+    strangers want more than the strip before signing in.
   * highlight songs added since your last visit? The data mostly
     exists already: songs.added_at + mixtape_visits.last_visit_at per
     visitor (post-0019, keyed per mixtape). One wrinkle: the page-load

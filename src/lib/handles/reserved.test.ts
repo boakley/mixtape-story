@@ -6,6 +6,7 @@ describe('reserved personal handles', () => {
     expect(isReservedHandle('admin')).toBe(true);
     expect(isReservedHandle('api')).toBe(true);
     expect(isReservedHandle('login')).toBe(true);
+    expect(isReservedHandle('how-it-works')).toBe(true);
     expect(isReservedHandle('onboarding')).toBe(true);
     expect(isReservedHandle('settings')).toBe(true);
   });

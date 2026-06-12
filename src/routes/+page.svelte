@@ -21,7 +21,7 @@
   <title>mixtapestory.com — share the songs, share the stories</title>
   <meta
     name="description"
-    content="Mixtape stories: a curated set of songs, each with writing about why that song matters. In private testing."
+    content="Mixtape stories: a curated set of songs, each with writing about why that song matters."
   />
   <meta property="og:title" content="mixtapestory.com" />
   <meta property="og:description" content="Share the songs, share the stories." />

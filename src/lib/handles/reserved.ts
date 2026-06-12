@@ -19,7 +19,7 @@
 export const RESERVED_HANDLES = new Set([
   // system / auth / infra
   'about', 'account', 'admin', 'api', 'auth', 'callback', 'email',
-  'help', 'login', 'logout', 'me', 'onboarding', 'privacy', 'robots',
+  'help', 'how-it-works', 'login', 'logout', 'me', 'onboarding', 'privacy', 'robots',
   'settings', 'signin', 'signup', 'sitemap', 'static', 'support',
   'terms', 'verify',
 
