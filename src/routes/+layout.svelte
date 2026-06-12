@@ -19,7 +19,11 @@
   // gains a "Manage this mixtape" section with Edit + QR (Listen-with
   // and Visitor-count come in later steps). Detect via the SvelteKit
   // route id so we don't have to guess from the pathname.
-  const isMixtapeView = $derived(page.route.id === '/[handle]');
+  const isMixtapeView = $derived(page.route.id === '/[handle]/[[slug=mixtapeslug]]');
+  // /{handle} or /{handle}/{slug} — the current mixtape page's base path.
+  const mixtapeBase = $derived(
+    page.params.slug ? `/${page.params.handle}/${page.params.slug}` : `/${page.params.handle}`
+  );
   const isOwnerOfThisMixtape = $derived(
     isMixtapeView &&
       typeof page.params.handle === 'string' &&
@@ -128,14 +132,29 @@
           Signed in as <span class="text-ink">{data.user.email}</span>
         </p>
         <hr class="border-rule" />
-        {#if data.viewerHandle}
-          <a
-            href="/{data.viewerHandle}"
-            onclick={closeMenu}
-            class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
-          >
-            My mixtape
-          </a>
+        {#if data.viewerHandle && data.viewerMixtapes.length > 0}
+          <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">My mixtapes</p>
+          {#each data.viewerMixtapes as m (m.slug ?? '')}
+            <a
+              href={m.slug ? `/${data.viewerHandle}/${m.slug}` : `/${data.viewerHandle}`}
+              onclick={closeMenu}
+              class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+            >
+              {m.name ?? `${data.viewerDisplayName ?? data.viewerHandle}'s mixtape`}
+            </a>
+          {/each}
+        {/if}
+        {#if data.viewerGroups.length > 0}
+          <p class="px-3 pt-2 text-xs uppercase tracking-wider text-ink-muted">My groups</p>
+          {#each data.viewerGroups as g (g.slug)}
+            <a
+              href="/g/{g.slug}"
+              onclick={closeMenu}
+              class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
+            >
+              {g.name}
+            </a>
+          {/each}
         {/if}
         {#if isOwnerOfThisMixtape}
           <hr class="border-rule" />
@@ -143,14 +162,14 @@
             Manage this mixtape
           </p>
           <a
-            href="/{page.params.handle}/edit"
+            href="{mixtapeBase}/_edit"
             onclick={closeMenu}
             class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
           >
             Edit mixtape <span class="text-ink-muted">· songs &amp; stories</span>
           </a>
           <a
-            href="/{page.params.handle}?qr=1"
+            href="{mixtapeBase}?qr=1"
             onclick={closeMenu}
             class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
           >
@@ -163,7 +182,7 @@
                whole point is letting any reader change the per-song
                Listen routing without leaving the page. -->
           <a
-            href="/{page.params.handle}?listen=set"
+            href="{mixtapeBase}?listen=set"
             onclick={closeMenu}
             class="block px-3 py-2 text-sm text-ink hover:bg-rule hover:text-accent"
           >

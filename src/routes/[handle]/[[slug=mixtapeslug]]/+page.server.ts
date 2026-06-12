@@ -28,19 +28,27 @@ export const load: PageServerLoad = async ({
 
   if (!profile) throw error(404, 'Mixtape not found');
 
-  // /{handle} shows the user's mixtape. Under share semantics each user
-  // has exactly one mixtape entity; it can be shared with N groups via
-  // the mixtape_group_shares table, but there's only one row's worth of
-  // songs and stories. Scoping song reads to the mixtape's id ensures
-  // we only see this user's content (defense in depth even though
-  // owner_id alone would work today).
-  const { data: personalMixtape } = await supabase
+  // No slug → the primary (slug null, exactly one per profile).
+  // A slug → that group-born mixtape; missing means 404 — secondaries
+  // come and go, the primary doesn't. Edits propagate to every group a
+  // mixtape is shared with because there's only one row per mixtape.
+  let mixtapeQuery = supabase
     .from('mixtapes')
-    .select('id, name, description')
-    .eq('profile_id', profile.id)
-    .maybeSingle<{ id: string; name: string | null; description: string }>();
+    .select('id, slug, name, description')
+    .eq('profile_id', profile.id);
+  mixtapeQuery = params.slug
+    ? mixtapeQuery.eq('slug', params.slug)
+    : mixtapeQuery.is('slug', null);
+  const { data: personalMixtape } = await mixtapeQuery.maybeSingle<{
+    id: string;
+    slug: string | null;
+    name: string | null;
+    description: string;
+  }>();
 
-  // No mixtape (very old profile not yet backfilled) → page renders
+  if (params.slug && !personalMixtape) throw error(404, 'Mixtape not found');
+
+  // No primary (very old profile not yet backfilled) → page renders
   // empty rather than 404; the profile still exists.
   let songs: DisplaySong[] = [];
   if (personalMixtape) {
@@ -106,30 +114,35 @@ export const load: PageServerLoad = async ({
     }
 
     // RLS denies anon/authenticated writes — go through service-role.
-    await adminClient()
-      .from('mixtape_visits')
-      .upsert(
-        {
-          profile_id: profile.id,
-          visitor_id: visitorId,
-          last_visit_at: new Date().toISOString()
-        },
-        { onConflict: 'profile_id,visitor_id' }
-      );
+    // Keyed per mixtape since 0019: each mixtape page counts its own
+    // readers.
+    if (personalMixtape) {
+      await adminClient()
+        .from('mixtape_visits')
+        .upsert(
+          {
+            mixtape_id: personalMixtape.id,
+            visitor_id: visitorId,
+            last_visit_at: new Date().toISOString()
+          },
+          { onConflict: 'mixtape_id,visitor_id' }
+        );
+    }
   }
 
   let visitorCount: number | null = null;
-  if (isOwner) {
+  if (isOwner && personalMixtape) {
     const { count } = await supabase
       .from('mixtape_visits')
       .select('*', { count: 'exact', head: true })
-      .eq('profile_id', profile.id);
+      .eq('mixtape_id', personalMixtape.id);
     visitorCount = count ?? 0;
   }
 
   return {
     handle: profile.handle,
     displayName: profile.display_name,
+    mixtapeSlug: personalMixtape?.slug ?? null,
     mixtapeName: personalMixtape?.name ?? null,
     mixtapeDescription: personalMixtape?.description ?? '',
     songs,
@@ -160,9 +173,13 @@ export const actions: Actions = {
       });
     }
 
-    // Empty input → set to null so the read path falls back to the
-    // derived "{display_name}'s mixtape" title. Useful if the creator
-    // wants to revert after trying a custom name.
+    // Primary: empty input → null, so the read path falls back to the
+    // derived "{display_name}'s mixtape" title. Secondaries require a
+    // name (menus and share choosers would otherwise show identical
+    // fallbacks — and the schema enforces it).
+    if (params.slug && name.length === 0) {
+      return fail(400, { name: { value: name, error: 'A group mixtape needs a name.' } });
+    }
     const valueToWrite = name.length === 0 ? null : name;
 
     const { error: updateError } = await admin

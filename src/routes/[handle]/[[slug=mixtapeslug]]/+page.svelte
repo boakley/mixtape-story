@@ -85,7 +85,10 @@
 
   let qrOpen = $state(false);
 
-  const mixtapeUrl = $derived(`https://mixtapestory.com/${data.handle}`);
+  const mixtapePath = $derived(
+    data.mixtapeSlug ? `/${data.handle}/${data.mixtapeSlug}` : `/${data.handle}`
+  );
+  const mixtapeUrl = $derived(`https://mixtapestory.com${mixtapePath}`);
 
   // Visitor "Listen with" preference. Seeded from the server-read cookie
   // (so SSR hrefs match on first paint), then updated client-side by
@@ -195,8 +198,8 @@
   // Native share sheet on mobile (iOS Safari, Chrome, etc), with a WhatsApp
   // click-to-chat fallback for desktop browsers without navigator.share.
   function handleShare() {
-    const url = `https://mixtapestory.com/${data.handle}`;
-    const title = `${data.displayName}'s mixtape`;
+    const url = mixtapeUrl;
+    const title = mixtapeTitle;
     const text = `${title} — ${url}`;
 
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -212,30 +215,35 @@
 </script>
 
 <svelte:head>
-  <title>{data.displayName}'s mixtape — mixtapestory.com</title>
+  <title>{mixtapeTitle} — mixtapestory.com</title>
   <meta name="description" content={ogDescription} />
-  <meta property="og:title" content="{data.displayName}'s mixtape" />
+  <meta property="og:title" content={mixtapeTitle} />
   <meta property="og:description" content={ogDescription} />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://mixtapestory.com/{data.handle}" />
-  <!-- og:image points directly at the Storage URL where the render-og Edge
-       Function writes the pre-rendered PNG. Direct (not via our /og/{handle}
-       SvelteKit endpoint) because some social-platform preview engines don't
-       follow redirects, and Storage already returns the right Content-Type
-       and cache headers. -->
-  <meta
-    property="og:image"
-    content="https://kudxongbgeaylfpcmick.supabase.co/storage/v1/object/public/og-images/{data.handle}.png"
-  />
-  <meta property="og:image:width" content="1080" />
-  <meta property="og:image:height" content="1080" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="{data.displayName}'s mixtape" />
+  <meta property="og:url" content={mixtapeUrl} />
+  {#if !data.mixtapeSlug}
+    <!-- og:image points directly at the Storage URL where the render-og Edge
+         Function writes the pre-rendered PNG. Direct (not via our /og/{handle}
+         SvelteKit endpoint) because some social-platform preview engines don't
+         follow redirects, and Storage already returns the right Content-Type
+         and cache headers. Primary-only: per-mixtape images are a documented
+         fast-follow, so group-born mixtapes unfurl text-only for now. -->
+    <meta
+      property="og:image"
+      content="https://kudxongbgeaylfpcmick.supabase.co/storage/v1/object/public/og-images/{data.handle}.png"
+    />
+    <meta property="og:image:width" content="1080" />
+    <meta property="og:image:height" content="1080" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:image"
+      content="https://kudxongbgeaylfpcmick.supabase.co/storage/v1/object/public/og-images/{data.handle}.png"
+    />
+  {:else}
+    <meta name="twitter:card" content="summary" />
+  {/if}
+  <meta name="twitter:title" content={mixtapeTitle} />
   <meta name="twitter:description" content={ogDescription} />
-  <meta
-    name="twitter:image"
-    content="https://kudxongbgeaylfpcmick.supabase.co/storage/v1/object/public/og-images/{data.handle}.png"
-  />
 </svelte:head>
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">
@@ -306,6 +314,16 @@
             </svg>
           </button>{/if}
       </h1>
+    {/if}
+
+    {#if data.mixtapeSlug}
+      <p class="mt-1 text-sm text-ink-muted">
+        A mixtape by <a
+          href="/{data.handle}"
+          class="text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+          >{data.displayName}</a
+        >
+      </p>
     {/if}
 
     <!-- Description: asymmetric. Visitor + empty → nothing renders, costs

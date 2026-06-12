@@ -248,7 +248,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.displayName}'s mixtape — edit</title>
+  <title>{data.mixtapeName ?? `${data.displayName}'s mixtape`} — edit</title>
 </svelte:head>
 
 <main class="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-12">
@@ -256,10 +256,10 @@
     <BrandCap />
     <div class="mt-2 flex items-baseline justify-between gap-3">
       <h1 class="text-3xl leading-tight text-ink sm:text-4xl">
-        {data.displayName}'s mixtape — edit
+        {data.mixtapeName ?? `${data.displayName}'s mixtape`} — edit
       </h1>
       <a
-        href="/{data.handle}"
+        href={data.mixtapeSlug ? `/${data.handle}/${data.mixtapeSlug}` : `/${data.handle}`}
         class="shrink-0 text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
       >
         View public page
@@ -388,7 +388,7 @@
         >
           Import {checkedCount} {checkedCount === 1 ? 'song' : 'songs'}
         </button>
-        <a href="/{data.handle}/edit" class="text-sm text-ink-muted underline hover:text-accent">
+        <a href={data.mixtapeSlug ? `/${data.handle}/${data.mixtapeSlug}/_edit` : `/${data.handle}/edit`} class="text-sm text-ink-muted underline hover:text-accent">
           Start over
         </a>
       </form>
