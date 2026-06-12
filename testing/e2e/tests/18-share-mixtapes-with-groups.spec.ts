@@ -29,12 +29,10 @@ test(
     // Each group's card names and links the right mixtape.
     const cardB = groupB.memberCard(creator.handle);
     await expect(cardB).toContainText('The Family Table mixtape');
-    await expect(cardB.getByRole('link')).toHaveAttribute(
-      'href',
-      `/${creator.handle}/${slugB}`
-    );
+    // The card itself is the link.
+    await expect(cardB).toHaveAttribute('href', `/${creator.handle}/${slugB}`);
     await creator.visitGroup(slugA);
-    await expect(groupA.memberCard(creator.handle).getByRole('link')).toHaveAttribute(
+    await expect(groupA.memberCard(creator.handle)).toHaveAttribute(
       'href',
       `/${creator.handle}`
     );

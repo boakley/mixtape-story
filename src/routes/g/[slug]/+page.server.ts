@@ -13,6 +13,8 @@ import type { Actions, PageServerLoad } from './$types';
 type MemberMixtape = {
   handle: string;
   displayName: string;
+  mixtapeSlug: string | null;
+  mixtapeName: string | null;
   songCount: number;
   updatedAt: string;
   // The viewer's own mixtape shows on the landing even when empty
@@ -87,6 +89,8 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
   let isSteward = false;
   let viewerHasGroupMixtape = false;
   let viewerHasPersonalMixtape = false;
+  let viewerMixtapes: { id: string; slug: string | null; name: string }[] = [];
+  let sharedMixtapeName: string | null = null;
   if (user) {
     const { data: membership } = await admin
       .from('group_memberships')
@@ -98,27 +102,33 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
     isSteward = membership?.role === 'steward';
 
     if (isMember) {
-      // Under share semantics each user has exactly one mixtape entity.
-      // The UI needs two facts:
-      //   - Does the user have a mixtape at all? (controls whether
-      //     "Share with this group" makes sense)
-      //   - Is that mixtape already shared with this group? (controls
-      //     whether the button reads "Share" or "Stop sharing")
-      const { data: mixtape } = await admin
-        .from('mixtapes')
-        .select('id')
-        .eq('profile_id', user.id)
-        .maybeSingle();
-      viewerHasPersonalMixtape = !!mixtape;
-      if (mixtape) {
-        const { data: share } = await admin
+      // The UI needs: which mixtapes could the viewer share here
+      // (primary first — it feeds the chooser when there's more than
+      // one), and what — if anything — they currently show this group
+      // (one share per (user, group) since 0019).
+      const [{ data: ownRows }, { data: viewerProfile }, { data: share }] = await Promise.all([
+        admin
+          .from('mixtapes')
+          .select('id, slug, name, created_at')
+          .eq('profile_id', user.id)
+          .order('created_at'),
+        admin.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
+        admin
           .from('mixtape_group_shares')
-          .select('mixtape_id')
-          .eq('mixtape_id', mixtape.id)
+          .select('mixtape_id, mixtape:mixtapes ( name )')
+          .eq('profile_id', user.id)
           .eq('group_id', group.id)
-          .maybeSingle();
-        viewerHasGroupMixtape = !!share;
-      }
+          .maybeSingle()
+      ]);
+      const own = (ownRows ?? []) as { id: string; slug: string | null; name: string | null }[];
+      const fallback = `${(viewerProfile?.display_name as string | undefined) ?? 'My'}'s mixtape`;
+      viewerMixtapes = [...own.filter((m) => m.slug === null), ...own.filter((m) => m.slug !== null)]
+        .map((m) => ({ id: m.id, slug: m.slug, name: m.name ?? fallback }));
+      viewerHasPersonalMixtape = own.length > 0;
+      viewerHasGroupMixtape = !!share;
+      const sharedRel = (share as unknown as { mixtape: { name: string | null } | null } | null)
+        ?.mixtape;
+      sharedMixtapeName = share ? (sharedRel?.name ?? fallback) : null;
     }
   }
 
@@ -142,7 +152,7 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
       .from('mixtape_group_shares')
       .select(`
         mixtape:mixtapes!inner (
-          id, profile_id, updated_at,
+          id, profile_id, updated_at, slug, name,
           profile:profiles!inner ( handle, display_name ),
           songs:songs (
             id, title, artist, album, isrc, songlink_url, links_by_platform,
@@ -169,6 +179,8 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
       mixtape: {
         profile_id: string;
         updated_at: string;
+        slug: string | null;
+        name: string | null;
         profile: { handle: string; display_name: string };
         songs: SongRow[];
       };
@@ -183,6 +195,8 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
       .map((r) => ({
         handle: r.mixtape.profile.handle,
         displayName: r.mixtape.profile.display_name,
+        mixtapeSlug: r.mixtape.slug,
+        mixtapeName: r.mixtape.name,
         songCount: r.mixtape.songs.length,
         updatedAt: r.mixtape.updated_at,
         isViewer: r.mixtape.profile_id === user?.id
@@ -288,6 +302,8 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
     viewerPref,
     viewerHasGroupMixtape,
     viewerHasPersonalMixtape,
+    viewerMixtapes,
+    sharedMixtapeName,
     invites
   };
 };
@@ -300,24 +316,29 @@ export const load: PageServerLoad = async ({ params, cookies, locals: { safeGetS
 export const actions: Actions = {
   // Share the user's mixtape with this group. Idempotent — the PK on
   // (mixtape_id, group_id) makes duplicate inserts a no-op.
-  shareWith: async ({ params, locals }) => {
+  shareWith: async ({ params, request, locals }) => {
     const ctx = await requireGroupRole(params, locals, 'member');
     if (!ctx.ok) return fail(ctx.status, { error: ctx.message });
     const { user, admin, group } = ctx;
 
-    const { data: mixtape } = await admin
-      .from('mixtapes')
-      .select('id')
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (!mixtape) return fail(500, { error: 'No mixtape to share. Contact support.' });
+    // Optional mixtape_id from the chooser (rendered when the member
+    // has several); default is the primary. Always validated against
+    // ownership.
+    const data = await request.formData();
+    const requestedId = String(data.get('mixtape_id') ?? '');
+    let query = admin.from('mixtapes').select('id').eq('profile_id', user.id);
+    query = requestedId ? query.eq('id', requestedId) : query.is('slug', null);
+    const { data: mixtape } = await query.maybeSingle();
+    if (!mixtape) return fail(requestedId ? 400 : 500, { error: 'No mixtape to share. Contact support.' });
 
+    await admin
+      .from('mixtape_group_shares')
+      .delete()
+      .eq('profile_id', user.id)
+      .eq('group_id', group.id);
     const { error: shareError } = await admin
       .from('mixtape_group_shares')
-      .upsert(
-        { mixtape_id: mixtape.id, group_id: group.id },
-        { onConflict: 'mixtape_id,group_id' }
-      );
+      .insert({ mixtape_id: mixtape.id, group_id: group.id });
     if (shareError) return fail(500, { error: 'Could not share your mixtape.' });
 
     return { ok: true };
@@ -326,20 +347,18 @@ export const actions: Actions = {
   // Stop sharing the user's mixtape with this group. Reverses shareWith
   // (without touching the underlying mixtape or its songs/stories).
   unshareFrom: async ({ params, locals }) => {
-    const { user, admin, group } = await requireGroupAccess(params, locals);
+    const ctx = await requireGroupRole(params, locals, 'member');
+    if (!ctx.ok) return fail(ctx.status, { error: ctx.message });
+    const { user, admin, group } = ctx;
 
-    const { data: mixtape } = await admin
-      .from('mixtapes')
-      .select('id')
-      .eq('profile_id', user.id)
-      .maybeSingle();
-    if (!mixtape) return { ok: true };
-
-    await admin
+    // One share per (user, group) — delete by the pair, whichever
+    // mixtape currently occupies it.
+    const { error: unshareError } = await admin
       .from('mixtape_group_shares')
       .delete()
-      .eq('mixtape_id', mixtape.id)
+      .eq('profile_id', user.id)
       .eq('group_id', group.id);
+    if (unshareError) return fail(500, { error: 'Could not stop sharing.' });
 
     return { ok: true };
   },

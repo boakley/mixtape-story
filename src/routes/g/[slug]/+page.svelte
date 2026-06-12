@@ -286,6 +286,22 @@
 
           {#if !data.viewerHasGroupMixtape}
             <form method="POST" action="?/shareWith" use:enhance class="mt-4">
+              {#if data.viewerMixtapes.length > 1}
+                <label class="mb-3 block max-w-xs">
+                  <span class="text-xs uppercase tracking-wider text-ink-muted"
+                    >Mixtape to share</span
+                  >
+                  <select
+                    name="mixtape_id"
+                    class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm"
+                  >
+                    {#each data.viewerMixtapes as m (m.id)}
+                      <option value={m.id}>{m.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+
               <button
                 type="submit"
                 class="rounded-md bg-ink px-4 py-2 text-sm text-paper hover:opacity-90"
@@ -312,10 +328,10 @@
         <div class="mt-4">
           {#each data.mixtapes as mt (mt.handle)}
             <a
-              href="/{mt.handle}"
+              href={mt.mixtapeSlug ? `/${mt.handle}/${mt.mixtapeSlug}` : `/${mt.handle}`}
               data-testid="member-card"
               data-handle={mt.handle}
-              title="Open {mt.displayName}'s mixtape"
+              title="Open {mt.mixtapeName ?? `${mt.displayName}'s mixtape`}"
               class="group grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 border-b border-rule"
             >
               <div class="relative" aria-hidden="true">
@@ -333,7 +349,7 @@
                       ? 'italic text-ink-muted group-hover:text-accent'
                       : 'text-ink group-hover:text-accent'}
                   >
-                    <span class="text-base">{mt.displayName}'s mixtape</span>
+                    <span class="text-base">{mt.mixtapeName ?? `${mt.displayName}'s mixtape`}</span>
                     {#if mt.songCount > 0}
                       <span class="ml-1.5 text-xs text-ink-muted">
                         ({mt.songCount} {mt.songCount === 1 ? 'song' : 'songs'})
@@ -361,6 +377,22 @@
 
           {#if !data.viewerHasGroupMixtape}
             <form method="POST" action="?/shareWith" use:enhance class="mt-6">
+              {#if data.viewerMixtapes.length > 1}
+                <label class="mb-3 block max-w-xs">
+                  <span class="text-xs uppercase tracking-wider text-ink-muted"
+                    >Mixtape to share</span
+                  >
+                  <select
+                    name="mixtape_id"
+                    class="mt-1 block w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm"
+                  >
+                    {#each data.viewerMixtapes as m (m.id)}
+                      <option value={m.id}>{m.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+
               <button
                 type="submit"
                 class="text-sm text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
@@ -382,7 +414,12 @@
               >
             </p>
           {:else}
-            <form method="POST" action="?/unshareFrom" use:enhance class="mt-6">
+            {#if data.sharedMixtapeName}
+              <p data-testid="shared-mixtape" class="mt-6 text-xs text-ink-muted">
+                Sharing {data.sharedMixtapeName} with this group.
+              </p>
+            {/if}
+            <form method="POST" action="?/unshareFrom" use:enhance class="mt-2">
               <button
                 type="submit"
                 class="text-sm text-ink-muted underline decoration-rule underline-offset-2 hover:text-accent"
