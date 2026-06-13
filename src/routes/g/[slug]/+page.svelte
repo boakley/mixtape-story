@@ -227,9 +227,6 @@
       <p class="text-sm text-ink-muted">
         This is a members-only group. Paste an invite code or full invite URL to join.
       </p>
-      <p class="mt-2 text-xs text-ink-muted">
-        (Invite handling lands in the next step. For now, a steward can add you directly.)
-      </p>
     </section>
   {:else}
     <!-- Tab strip. Underline pattern from docs/mockups/group-landing.html:
