@@ -25,7 +25,7 @@ test(
   async ({ creator, visitor }) => {
   const slug = workerGroupSlug('spring-cohort');
   const code = workerGroupSlug('spring2026'); // same naming pattern works for codes
-  const timHandle = workerHandle('tim');
+  const visitorHandle = workerHandle('roxanne');
 
   // Steward sets up the group and mints an invite.
   const group = await createGroup(creator.page, {
@@ -67,8 +67,8 @@ test(
   // Visitor picks a handle. Onboarding honors the redirect param and
   // sends them back to the invite URL → membership is inserted →
   // landing renders with `?joined=1`.
-  await visitor.page.locator('input[name="handle"]').fill(timHandle);
-  await visitor.page.locator('input[name="display_name"]').fill('Tim');
+  await visitor.page.locator('input[name="handle"]').fill(visitorHandle);
+  await visitor.page.locator('input[name="display_name"]').fill('Roxanne');
   await visitor.page.getByRole('button', { name: /claim/i }).click();
   await visitor.page.waitForURL(new RegExp(`/g/${slug}`));
 

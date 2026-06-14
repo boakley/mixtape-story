@@ -18,9 +18,9 @@ See [`PLAN.md`](PLAN.md) for the broader v1 scaffold. This doc supersedes the ro
 
 A signed-in owner can add, edit, reorder, and remove their own songs and stories on `/{handle}/edit`. The bulk path (paste an **Apple Music playlist URL**, get all the songs at once) is the primary entry point. Single-song URL paste (any service via Odesli) and manual entry are fallbacks. Changes show up immediately on the public `/{handle}` page.
 
-**Deliverable:** Bryan can sit down with his Apple Music playlist for his mixtape, paste the playlist URL once, and end up with all songs imported with working "Listen" buttons. Tim can do the same (his CSV originated from Apple Music, so his content maps cleanly). Writing-group members on other services can add songs one at a time via single-song URL paste, or use manual entry.
+**Deliverable:** Bryan can sit down with his Apple Music playlist for his mixtape, paste the playlist URL once, and end up with all songs imported with working "Listen" buttons. A second seed user can do the same (the other seed CSV originated from Apple Music, so the content maps cleanly). Writing-group members on other services can add songs one at a time via single-song URL paste, or use manual entry.
 
-**Why Apple-only?** Scoping discipline. One adapter gets the editor end-to-end faster than three, and Apple is what Bryan and Tim already use. The `MusicService` interface stays in place so adding Spotify and YouTube Music playlist support later is one new file each.
+**Why Apple-only?** Scoping discipline. One adapter gets the editor end-to-end faster than three, and Apple is what both seed users already use. The `MusicService` interface stays in place so adding Spotify and YouTube Music playlist support later is one new file each.
 
 ---
 
@@ -128,13 +128,15 @@ create table song_cache (
 
 ## Data migration: CSV → DB
 
-One-shot script at `scripts/migrate-seeds.ts`. The wrinkle: Bryan's and Tim's CSVs use the `year` column differently and we need to migrate them into the right field.
+One-shot script at `scripts/migrate-seeds.ts`. The wrinkle: the two seed CSVs use the `year` column differently and we need to migrate them into the right field.
 
 ```ts
 // scripts/migrate-seeds.ts (sketch)
 const yearMeaning: Record<string, 'memory' | 'release'> = {
   bryan: 'memory',    // Bryan curated by hand; year = the year of his life the song evokes
-  tim:   'release',   // Tim's CSV came from his Apple Music export; year = album release year
+  // Add one entry per seed CSV. Use 'release' when the CSV came from a
+  // streaming-service export (year = album release year), 'memory' when
+  // curated by hand.
 };
 ```
 
@@ -150,7 +152,7 @@ For each CSV in `src/lib/seed/*.csv`:
 
 Run once locally against the prod DB as a Node script using the service-role key.
 
-After migration: every CSV row is also a DB row. CSVs become a deletable historical artifact. Bryan's timeline still works (memory years intact). Tim's timeline shows no year labels until he edits and sets his memory years.
+After migration: every CSV row is also a DB row. CSVs become a deletable historical artifact. Bryan's timeline still works (memory years intact). The other seed user's timeline shows no year labels until they edit and set their own memory years.
 
 ---
 
@@ -324,7 +326,7 @@ GET /api/admin/queue
   "failed": [
     {
       "id": "uuid",
-      "owner_handle": "tim",
+      "owner_handle": "roxanne",
       "title": "Some Song",
       "artist": "Some Artist",
       "source_url": "...",
@@ -498,7 +500,7 @@ All resolved. Coding can start without ambiguity.
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Which streaming-service adapters ship in 1b? | **Apple Music only.** Spotify and YouTube Music playlist import deferred to a later phase. Single-song URLs from those services still work via Odesli fallback. Bryan and Tim both already use Apple. |
+| 1 | Which streaming-service adapters ship in 1b? | **Apple Music only.** Spotify and YouTube Music playlist import deferred to a later phase. Single-song URLs from those services still work via Odesli fallback. Both seed users already use Apple. |
 | 2 | Story format: plain text or markdown? | **Markdown** via `marked`, raw HTML disabled. See "Story editing". |
 | 3 | Reorder UX: arrows or drag-and-drop? | **Arrows (`↑` `↓`)** in 1b. Drag-and-drop is v1.1 if reordering volume justifies it. |
 | 4 | Year handling: one field or two? | **Two fields**: `release_year` (auto from metadata) + `memory_year` (user-set, drives timeline). See "Year semantics". |
@@ -537,7 +539,7 @@ Honest break-down. Each line is "focused work, including local testing":
 ## Risks
 
 - **Apple HTML changes** (scrape path) — could break silently. Mitigation: integration tests that hit a real Apple Music playlist URL and verify expected fields. Fail loud, not silent. Adapter returns a clear error so the editor can surface "couldn't read this playlist" rather than silently producing zero songs.
-- **Odesli rate limits more aggressive than documented** — we've already seen this in Tim's bulk import. Mitigation: queue with conservative throttle, retry-after backoff, status surfacing per song.
+- **Odesli rate limits more aggressive than documented** — we've already seen this on a bulk import from a second seed user. Mitigation: queue with conservative throttle, retry-after backoff, status surfacing per song.
 - **Odesli rate limit** — ~10/min on the public endpoint, observed stricter in burst. Mitigated by the queue + first-song priority. Worth revisiting if Phase 1b proves the product and traction grows.
 - **JSON-LD scraping fragility** for Apple — Apple sometimes wraps data in non-standard structures. Mitigation: have the adapter fall back to "couldn't parse" gracefully → user sees the playlist as failed and can paste songs one at a time.
 - **Worker time budget** — Supabase Edge Functions have a CPU/wall-time budget per invocation. Processing 9 songs per minute with Odesli calls should fit comfortably (each call is ~200ms). Worth verifying once.
@@ -548,7 +550,7 @@ Honest break-down. Each line is "focused work, including local testing":
 
 - [ ] Bryan can sign in, paste an Apple Music playlist URL at `/bryan/edit`, see all songs imported with working Listen buttons within a few minutes.
 - [ ] Bryan can write a story for each song inline (save per song), reorder via arrows, and delete songs.
-- [ ] Tim can sign in, paste an Apple Music playlist URL, get the same experience.
+- [ ] A second seed user can sign in, paste an Apple Music playlist URL, get the same experience.
 - [ ] A writing-group member on Spotify or YouTube Music can add songs one at a time via single-song URL paste; Odesli handles the resolution.
 - [ ] Manual entry (no URL) works; Listen button is appropriately disabled.
 - [ ] `/{handle}` reads from DB, not CSV; the seed CSV files have been deleted.

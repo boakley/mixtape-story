@@ -8,12 +8,13 @@
  *
  * Each run, idempotently:
  *   - Drops the seed group ("writing-meditation") and the throwaway
- *     personas (diane, jack), cascading their songs/shares/memberships.
- *     We never wipe bryan/tim — those may be real local profiles.
- *   - Ensures 4 personas exist: bryan, tim, diane, jack. Looks up by
+ *     personas (roxanne, diane, jack), cascading their songs/shares/
+ *     memberships. We never wipe bryan — that may be a real local profile.
+ *   - Ensures 4 personas exist: bryan, roxanne, diane, jack. Looks up by
  *     handle; creates a fake auth user (`<handle>@e2e.local`) for any
  *     that are missing.
- *   - Creates the group with bryan as steward; tim/diane/jack as members.
+ *   - Creates the group with bryan as steward; roxanne/diane/jack as
+ *     members.
  *   - For each persona with 0 songs, imports src/lib/seed/<handle>.csv.
  *     If a persona already has songs (e.g. bryan imported via
  *     migrate-seeds.ts), we leave the existing data alone.
@@ -64,19 +65,19 @@ const GROUP_DESCRIPTION =
 
 const PERSONAS: Persona[] = [
   { handle: 'bryan', displayName: 'Bryan', role: 'steward' },
-  { handle: 'tim', displayName: 'Tim', role: 'member' },
+  { handle: 'roxanne', displayName: 'Roxanne', role: 'member' },
   { handle: 'diane', displayName: 'Diane', role: 'member' },
   { handle: 'jack', displayName: 'Jack', role: 'member' }
 ];
 
 // Personas that are pure seed-fakes (vs. potentially-real local profiles).
-// Only these get wiped on re-run; bryan/tim are left alone.
-const FAKE_HANDLES = new Set(['diane', 'jack']);
+// Only these get wiped on re-run; bryan is left alone.
+const FAKE_HANDLES = new Set(['roxanne', 'diane', 'jack']);
 
 // CSV "year" column meaning, per persona.
 const yearMeaning: Record<string, 'memory' | 'release'> = {
   bryan: 'memory',
-  tim: 'release',
+  roxanne: 'memory',
   diane: 'memory',
   jack: 'memory'
 };

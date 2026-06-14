@@ -20,7 +20,7 @@ type Creator = SeededUser & {
 
 type Fixtures = {
   creator: Creator;
-  /** A second seeded user (handle 'tim'), unauthenticated, useful for
+  /** A second seeded user (handle 'roxanne'), unauthenticated, useful for
    *  multi-actor journeys (invite + join, viewer-opens-mixtape). */
   visitor: { page: Page };
 };

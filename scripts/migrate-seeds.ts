@@ -7,9 +7,9 @@
  *
  * Reads each seed CSV (`src/lib/seed/<handle>.csv`), looks up the matching
  * profile, and inserts `songs` + `stories` rows. The `year` column means
- * different things per handle:
- *   - bryan: memory_year (curated by hand)
- *   - tim:   release_year (came from his Apple Music export)
+ * `memory_year` for hand-curated CSVs and `release_year` for CSVs that
+ * came from a streaming-service export. The per-handle mapping is in
+ * `yearMeaning` below; default is `memory`.
  *
  * Uses the service-role key so RLS does not block writes.
  */
@@ -24,7 +24,7 @@ const SEED_DIR = resolvePath(HERE, '..', 'src', 'lib', 'seed');
 
 const yearMeaning: Record<string, 'memory' | 'release'> = {
   bryan: 'memory',
-  tim: 'release'
+  roxanne: 'memory'
 };
 
 const APPLY = process.argv.includes('--apply');

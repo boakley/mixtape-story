@@ -47,7 +47,7 @@ export function workerHandle(base: string): string {
 /**
  * Create a new auth user, profile, and personal mixtape with a
  * worker-isolated handle. Callers pass the *base* handle (`sam`,
- * `tim`); the worker suffix is added here so each parallel worker
+ * `roxanne`); the worker suffix is added here so each parallel worker
  * gets its own DB slot.
  */
 export async function seedUser(opts: {

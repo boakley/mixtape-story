@@ -67,3 +67,9 @@ supabase/.temp/
 .fastembed_cache/
 test-results/
 testing/results/
+
+# Personal mockup: embeds Bryan's own mixtape stories with named
+# references. Kept locally as a working artifact; not shipped in the
+# public repo. Replace with seed-data-backed mockup if the coverflow
+# concept ever needs to be a public design reference.
+docs/mockups/coverflow-poc.html

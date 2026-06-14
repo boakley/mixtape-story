@@ -68,9 +68,9 @@ test(
 
     // Second member seeded at the data layer (the invite-join journey
     // has its own coverage in 08; it isn't the subject here).
-    const tim = await seedUser({ baseHandle: 'tim', displayName: 'Tim' });
-    await seedSong(tim.id, { title: 'Born to Run', artist: 'Bruce Springsteen' });
-    await seedGroupMember(slug, tim.id);
+    const roxanne = await seedUser({ baseHandle: 'roxanne', displayName: 'Roxanne' });
+    await seedSong(roxanne.id, { title: 'Born to Run', artist: 'Bruce Springsteen' });
+    await seedGroupMember(slug, roxanne.id);
 
     await creator.visitGroup(slug);
     await group.tab('Songs we share').click();
@@ -78,6 +78,6 @@ test(
     const entry = creator.page.locator('[data-testid="song-entry"]');
     await expect(entry).toHaveCount(1);
     await expect(entry).toContainText('Born to Run');
-    await expect(entry).toContainText(/Picked by (Sam and Tim|Tim and Sam)/);
+    await expect(entry).toContainText(/Picked by (Sam and Roxanne|Roxanne and Sam)/);
   }
 );
