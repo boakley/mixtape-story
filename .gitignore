@@ -73,3 +73,7 @@ testing/results/
 # public repo. Replace with seed-data-backed mockup if the coverflow
 # concept ever needs to be a public design reference.
 docs/mockups/coverflow-poc.html
+
+# Personal planning doc for the blog series. Kept locally for working
+# notes; not shipped in the public repo.
+docs/blog-plan.md
