@@ -47,7 +47,32 @@
   }
   async function handleDndFinalize(e: CustomEvent<DndEvent<(typeof data.songs)[number]>>) {
     songOrder = e.detail.items;
-    const ids = songOrder.map((s) => s.id);
+    await persistOrder(songOrder.map((s) => s.id));
+  }
+
+  // Per-row Up/Down buttons offer a deterministic alternative to the
+  // drag-and-drop interaction. Drag stays for visual users; the buttons
+  // serve touch users (tap beats long-press), accessibility users (real
+  // buttons with real labels), and the test suite (one click = one
+  // POST, no animation timing to race).
+  async function moveSong(songId: string, direction: 'up' | 'down'): Promise<void> {
+    const idx = songOrder.findIndex((s) => s.id === songId);
+    if (idx === -1) return;
+    const target = direction === 'up' ? idx - 1 : idx + 1;
+    if (target < 0 || target >= songOrder.length) return;
+
+    // Swap optimistically so the UI updates immediately.
+    const next = [...songOrder];
+    const a = next[idx]!;
+    const b = next[target]!;
+    next[idx] = b;
+    next[target] = a;
+    songOrder = next;
+
+    await persistOrder(next.map((s) => s.id));
+  }
+
+  async function persistOrder(ids: string[]): Promise<void> {
     const fd = new FormData();
     fd.set('ids', JSON.stringify(ids));
     await fetch('?/reorder', { method: 'POST', body: fd });
@@ -670,7 +695,7 @@
       onconsider={handleDndConsider}
       onfinalize={handleDndFinalize}
     >
-      {#each songOrder as song (song.id)}
+      {#each songOrder as song, i (song.id)}
         <li animate:flip={{ duration: 180 }} class="group" data-testid="song-row">
           <!-- Compact single-line row -->
           <div class="flex items-center gap-2 px-2 py-1.5">
@@ -689,6 +714,33 @@
                 <circle cx="7" cy="11" r="1.2" fill="currentColor" />
               </svg>
             </button>
+
+            <!-- Tap-to-reorder buttons. Drag stays for visual users; these
+                 cover touch (tap beats long-press), keyboard/screen-reader
+                 paths, and give the test suite a deterministic interaction
+                 (one click = one POST, no animation race). -->
+            <div class="flex shrink-0 flex-col">
+              <button
+                type="button"
+                onclick={() => moveSong(song.id, 'up')}
+                disabled={i === 0}
+                aria-label={`Move ${song.title} up`}
+                title="Move up"
+                class="flex h-3 w-4 items-center justify-center text-xs leading-none text-ink-muted hover:text-accent disabled:cursor-not-allowed disabled:text-rule disabled:hover:text-rule"
+              >
+                <span aria-hidden="true">▲</span>
+              </button>
+              <button
+                type="button"
+                onclick={() => moveSong(song.id, 'down')}
+                disabled={i === songOrder.length - 1}
+                aria-label={`Move ${song.title} down`}
+                title="Move down"
+                class="flex h-3 w-4 items-center justify-center text-xs leading-none text-ink-muted hover:text-accent disabled:cursor-not-allowed disabled:text-rule disabled:hover:text-rule"
+              >
+                <span aria-hidden="true">▼</span>
+              </button>
+            </div>
 
             <span
               class="w-10 shrink-0 text-right text-xs tabular-nums text-ink-muted"
