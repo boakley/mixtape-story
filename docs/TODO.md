@@ -9,6 +9,11 @@ freely.
   * should the list of mixtapes in a group be expandable
     Right now I can click to jump to a mixtape, but it might be
     nice to drill into it without having to leave the page
+  * add a "+ Create a group" link to the drawer. The route at
+    /g/create works fine; nothing in the menu surfaces it today.
+    Natural placement: under MY GROUPS as a muted accent link
+    below the user's existing groups, similar to how "Add a
+    description" reads on the mixtape page.
 * features:
   * ship the /how-it-works page — built and parked in
     docs/mockups/how-it-works-page.svelte (landing strip shipped alone;

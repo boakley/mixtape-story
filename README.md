@@ -24,8 +24,8 @@ Product context:
 - [`CLAUDE.md`](CLAUDE.md) — operative product decisions
 - [`docs/design-notes.md`](docs/design-notes.md) — rationale and open questions
 - [`docs/design-language.md`](docs/design-language.md) — visual conventions
-- [`docs/PLAN.md`](docs/PLAN.md) — POC scope and v1 scaffold plan
 - [`docs/mixtapestories-vision.md`](docs/mixtapestories-vision.md) — the longer-form vision
+- [`docs/archive/`](docs/archive/) — the build plans and design explorations for v1 and v1.5, kept for historical context
 
 ## Stack
 
@@ -122,8 +122,8 @@ Wrangler reads settings from [`wrangler.toml`](wrangler.toml) — notably `compa
 Phase 1a (magic-link auth) and Phase 1b (editor, songs/stories schema, Apple Music
 adapter, Odesli queue worker, admin queue dashboard, DB-backed `/{handle}` read path)
 both live. What's still missing: Phase 1d polish — OG mosaic image generator, Ask
-flow, PWA. See [`docs/PLAN.md`](docs/PLAN.md) for the full sequence and
-[`docs/PHASE-1B.md`](docs/PHASE-1B.md) for the editor design.
+flow, PWA. The build plans for each phase live in [`docs/archive/`](docs/archive/) if
+you want the historical sequence.
 
 ## Phase 1b operational notes
 
