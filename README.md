@@ -12,6 +12,8 @@ This codebase doubles as a working example of AI-collaborative quality engineeri
 
 The headline numbers: a 100× stress run of the Playwright E2E suite passes 3,000 for 3,000 — zero flakes — re-verified after every framework change. With retries disabled entirely, every residual failure classified as local infrastructure: zero product bugs, zero test bugs.
 
+The full write-up lives at [developer.mixtapestory.com](https://developer.mixtapestory.com): the flake story end to end, plus 26 specific judgment calls that built the framework.
+
 If you came for the testing story, start here:
 
 - [`docs/TESTING.md`](docs/TESTING.md) — philosophy, page-object design, and the deliberate omissions
