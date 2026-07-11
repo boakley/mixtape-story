@@ -67,11 +67,15 @@ These are unresolved. Don't paper over them with code defaults — surface them 
 
 ### Should the "X asked" count be visible to viewers, or only to the creator?
 
+**Resolved 2026-07-10: moot — "Ask about this song" was dropped (see next question).**
+
 Visible creates social proof (3 friends already asked about this song → I'm curious too) but nudges everyone toward the songs that already have heat, starving quieter songs of attention.
 
 **Tentative lean:** visible to everyone. The social proof effect is real and the creator likes seeing the heat. But worth being deliberate.
 
 ### What does the "Ask about this song" button actually do?
+
+**Resolved 2026-07-10: dropped.** The concept belonged to a v0 model where stories started blank and viewers nudged the creator into telling them. The product went the other way — creators are encouraged to write stories from the get-go — so the button never shipped. Options kept below for the record.
 
 Three options ascending in build cost:
 
@@ -122,7 +126,7 @@ Product writing should match the audience: a contemplative writing group of adul
 
 - ✓ "7 songs · 1974 — 2022"
 - ✗ "Sam's epic life mixtape! 🎶"
-- ✓ "Ask about this song"
+- ✓ "tap any song to read its story"
 - ✗ "Drop Sam a note"
 - ✓ "Share the songs, share the stories."
 - ✗ "Your life. Your soundtrack. Your story."

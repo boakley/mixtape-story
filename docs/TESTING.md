@@ -1,6 +1,6 @@
 # Testing
 
-mixtapestory.com's test suite has one organizing idea: it is the executable version of the user journey. The product is small and tightly scoped, and the tests are too. What they cover is "the path a person actually walks": sign in, make a mixtape, write a story, publish, share, open someone else's, ask about a song. Read top to bottom, the end-to-end suite is a tour of the product.
+mixtapestory.com's test suite has one organizing idea: it is the executable version of the user journey. The product is small and tightly scoped, and the tests are too. What they cover is "the path a person actually walks": sign in, make a mixtape, write a story, publish, share, open someone else's, listen to a song. Read top to bottom, the end-to-end suite is a tour of the product.
 
 This is on purpose. For a banking or healthcare app, exhaustive feature coverage is the right emphasis. The failure modes are regulatory and financial. For a small consumer app where data is less significant, the journey is the important thing. The failure mode is at most an experience that doesn't quite work.
 

@@ -6,6 +6,14 @@ on purpose — these are notes to think with, not tickets. Cull / fold
 freely.
 
 * fix ux design issues
+  * logged-out visit to /{handle}/_edit redirects to /login but drops
+    the destination — after signing in you land on /me, not back in
+    the editor. Found on the stranger walk 2026-07-10. The plumbing
+    exists: /auth/callback already honors ?next= via safeRedirect
+    (the invite flow uses it); the gap is the _edit gate redirecting
+    to plain /login and the login action hard-coding its
+    emailRedirectTo callback without threading next through. Small,
+    contained fix; mildly annoying until then, only for the owner.
   * should the list of mixtapes in a group be expandable
     Right now I can click to jump to a mixtape, but it might be
     nice to drill into it without having to leave the page
