@@ -2,10 +2,12 @@ import { fail, redirect } from '@sveltejs/kit';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
+export const load: PageServerLoad = async ({ url, locals: { safeGetSession } }) => {
   const { session } = await safeGetSession();
   if (session) throw redirect(303, '/me');
-  return {};
+  // /auth/callback and /auth/confirm bounce here with ?error= when a
+  // sign-in link can't be verified (expired, already used).
+  return { linkError: url.searchParams.has('error') };
 };
 
 export const actions: Actions = {

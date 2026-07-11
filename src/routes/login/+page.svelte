@@ -4,8 +4,10 @@
   import HelpTip from '$lib/components/HelpTip.svelte';
   import type { ActionData } from './$types';
 
-  type Props = { form: ActionData };
-  let { form }: Props = $props();
+  import type { PageData } from './$types';
+
+  type Props = { form: ActionData; data: PageData };
+  let { form, data }: Props = $props();
 </script>
 
 <svelte:head>
@@ -18,6 +20,12 @@
   <p class="mt-2 text-sm text-ink-muted">
     Enter your email and we'll send a one-time link.
   </p>
+
+  {#if data.linkError && !form?.sent}
+    <p role="alert" class="mt-4 text-sm text-accent">
+      That sign-in link didn't work — it may have expired or already been used. Enter your email for a fresh one.
+    </p>
+  {/if}
 
   {#if form?.sent}
     <div role="status" class="mt-8 rounded-md border border-rule p-4 text-sm text-ink">
