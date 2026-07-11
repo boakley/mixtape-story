@@ -13,5 +13,14 @@
   </head>
   <body data-sveltekit-preload-data="hover" class="bg-paper text-ink antialiased">
     <div style="display: contents">%sveltekit.body%</div>
+    <!-- Cloudflare Web Analytics. The zone's automatic injection doesn't
+         reach this Pages-Function-rendered app (verified in-browser
+         2026-07-10), so the beacon ships explicitly. Same token as the
+         zone's WA site; segment by host in the dashboard. -->
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "b7c97b83723c429592b2ab4490f53f47"}'
+    ></script>
   </body>
 </html>
