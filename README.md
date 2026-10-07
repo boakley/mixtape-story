@@ -170,7 +170,12 @@ you want the historical sequence.
 - **Resolution worker**: Edge Function at `supabase/functions/resolve-queue/`,
   triggered every minute by `pg_cron`. Migration 0006 scheduled the first version
   of the job; migration 0009 rewrote it to read its secrets from **Supabase
-  Vault**. Before the cron job can call the function, two secrets must exist in
+  Vault**; migration 0020 gated it so a tick only calls the function when some
+  song is `pending` (idle ticks used to pin the nano instance's CPU and disk IO)
+  and added a nightly `prune-cron-history` job that keeps 7 days of
+  `cron.job_run_details`. If the dashboard's compute chart looks high again, run
+  [`supabase/snippets/diagnose_load.sql`](supabase/snippets/diagnose_load.sql)
+  in the SQL editor. Before the cron job can call the function, two secrets must exist in
   `vault.secrets`. Paste the snippet at
   [`supabase/snippets/set_cron_secrets.sql`](supabase/snippets/set_cron_secrets.sql)
   into the dashboard SQL editor (substituting the service-role JWT) and run it.
